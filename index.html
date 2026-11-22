@@ -160,8 +160,12 @@
                   </div>
                 </div>
               </div>
+              <label class="flex items-center gap-2 pt-1 cursor-pointer select-none">
+                <input id="chkPolyProportional" type="checkbox" checked class="rounded bg-slate-800 border-slate-600 text-amber-500 focus:ring-0" />
+                <span class="text-[11px] font-medium text-amber-200">Пропорционально (ровный правильный многоугольник)</span>
+              </label>
               <p class="text-[10px] text-slate-400 leading-tight">
-                Фигура вписывается в заданные габариты <b>Ширина × Высота (мм)</b>. При равных сторонах получается правильный многоугольник.
+                При включённой галочке изменение <b>Ширины</b> или <b>Высоты</b> автоматически пересчитывает второй размер под правильный многоугольник.
               </p>
             </div>
             <div class="flex items-end gap-2">
@@ -902,20 +906,32 @@
       return Math.abs(area) / 2;
     }
 
-    // Честная проверка пересечения двух выпуклых/простых многоугольников (SAT / сегменты) с учётом зазора gap
+    // Проверка пересечения двух выпуклых многоугольников с учётом требуемого зазора gap (мм):
+    // При gap === 0 допускается касание стык-в-стык (только строгое внутреннее пересечение запрещено).
+    // При gap > 0 между любыми точками контуров должно быть расстояние не меньше gap.
     function polygonsOverlapWithGap(polyA, polyB, gap) {
-      // Быстрый отсев по описанным прямоугольникам с учётом зазора
       let minAx = Infinity, minAy = Infinity, maxAx = -Infinity, maxAy = -Infinity;
       polyA.forEach(p => { if (p.x < minAx) minAx = p.x; if (p.y < minAy) minAy = p.y; if (p.x > maxAx) maxAx = p.x; if (p.y > maxAy) maxAy = p.y; });
       let minBx = Infinity, minBy = Infinity, maxBx = -Infinity, maxBy = -Infinity;
       polyB.forEach(p => { if (p.x < minBx) minBx = p.x; if (p.y < minBy) minBy = p.y; if (p.x > maxBx) maxBx = p.x; if (p.y > maxBy) maxBy = p.y; });
 
-      if (maxAx + gap < minBx - 1e-6 || maxBx + gap < minAx - 1e-6 || maxAy + gap < minBy - 1e-6 || maxBy + gap < minAy - 1e-6) {
+      const epsPad = gap > 0 ? gap - 1e-4 : -0.15;
+      if (maxAx + epsPad <= minBx || maxBx + epsPad <= minAx || maxAy + epsPad <= minBy || maxBy + epsPad <= minAy) {
         return false;
       }
 
-      // Проверка принадлежности точки многоугольнику
-      const ptInside = (px, py, poly) => {
+      const ptStrictlyInside = (px, py, poly) => {
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const ax = poly[j].x, ay = poly[j].y, bx = poly[i].x, by = poly[i].y;
+          const vx = bx - ax, vy = by - ay;
+          const wx = px - ax, wy = py - ay;
+          const len2 = vx * vx + vy * vy;
+          if (len2 > 1e-9) {
+            const t = Math.max(0, Math.min(1, (vx * wx + vy * wy) / len2));
+            const distEdge = Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
+            if (distEdge < 0.15) return false;
+          }
+        }
         let inside = false;
         for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
           const xi = poly[i].x, yi = poly[i].y;
@@ -926,7 +942,6 @@
         return inside;
       };
 
-      // Расстояние от точки (px, py) до отрезка (ax, ay)-(bx, by)
       const ptToSegDist = (px, py, ax, ay, bx, by) => {
         const vx = bx - ax, vy = by - ay;
         const wx = px - ax, wy = py - ay;
@@ -938,48 +953,65 @@
         return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
       };
 
-      // Расстояние между двумя отрезками AB и CD
-      const segToSegDist = (ax, ay, bx, by, cx, cy, dx, dy) => {
+      const segIntersectionDepth = (ax, ay, bx, by, cx, cy, dx, dy) => {
         const ccw = (p1x, p1y, p2x, p2y, p3x, p3y) => (p3y - p1y) * (p2x - p1x) > (p2y - p1y) * (p3x - p1x);
-        const intersect = (ccw(ax, ay, cx, cy, dx, dy) !== ccw(bx, by, cx, cy, dx, dy)) &&
-                          (ccw(ax, ay, bx, by, cx, cy) !== ccw(ax, ay, bx, by, dx, dy));
-        if (intersect) return 0;
-        return Math.min(
-          ptToSegDist(ax, ay, cx, cy, dx, dy),
-          ptToSegDist(bx, by, cx, cy, dx, dy),
-          ptToSegDist(cx, cy, ax, ay, bx, by),
-          ptToSegDist(dx, dy, ax, ay, bx, by)
-        );
+        const inter = (ccw(ax, ay, cx, cy, dx, dy) !== ccw(bx, by, cx, cy, dx, dy)) &&
+                      (ccw(ax, ay, bx, by, cx, cy) !== ccw(ax, ay, bx, by, dx, dy));
+        if (!inter) return null;
+        const denom = (ax - bx) * (cy - dy) - (ay - by) * (cx - dx);
+        if (Math.abs(denom) < 1e-9) return { x: (ax + bx) * 0.5, y: (ay + by) * 0.5 };
+        const t = ((ax - cx) * (cy - dy) - (ay - cy) * (cx - dx)) / denom;
+        return { x: ax + t * (bx - ax), y: ay + t * (by - ay) };
       };
 
-      // Пересечение контуров или попадание вершины внутрь
-      for (let i = 0; i < polyA.length; i++) {
-        if (ptInside(polyA[i].x, polyA[i].y, polyB)) return true;
-      }
-      for (let i = 0; i < polyB.length; i++) {
-        if (ptInside(polyB[i].x, polyB[i].y, polyA)) return true;
-      }
-
-      // Проверка минимального расстояния между всеми рёбрами двух многоугольников < gap
-      const minAllowed = Math.max(0, gap - 1e-4);
       for (let i = 0; i < polyA.length; i++) {
         const a1 = polyA[i];
         const a2 = polyA[(i + 1) % polyA.length];
         for (let j = 0; j < polyB.length; j++) {
           const b1 = polyB[j];
           const b2 = polyB[(j + 1) % polyB.length];
-          if (segToSegDist(a1.x, a1.y, a2.x, a2.y, b1.x, b1.y, b2.x, b2.y) < minAllowed) {
+          const hit = segIntersectionDepth(a1.x, a1.y, a2.x, a2.y, b1.x, b1.y, b2.x, b2.y);
+          if (hit) {
+            if (gap <= 1e-6) {
+              const dA = Math.min(Math.hypot(hit.x - a1.x, hit.y - a1.y), Math.hypot(hit.x - a2.x, hit.y - a2.y));
+              const dB = Math.min(Math.hypot(hit.x - b1.x, hit.y - b1.y), Math.hypot(hit.x - b2.x, hit.y - b2.y));
+              if (dA < 0.25 && dB < 0.25) continue;
+            }
             return true;
           }
         }
       }
+
+      for (let i = 0; i < polyA.length; i++) {
+        if (ptStrictlyInside(polyA[i].x, polyA[i].y, polyB)) return true;
+      }
+      for (let i = 0; i < polyB.length; i++) {
+        if (ptStrictlyInside(polyB[i].x, polyB[i].y, polyA)) return true;
+      }
+
+      if (gap > 1e-6) {
+        const minAllowed = gap - 1e-4;
+        for (let i = 0; i < polyA.length; i++) {
+          const a1 = polyA[i];
+          const a2 = polyA[(i + 1) % polyA.length];
+          for (let j = 0; j < polyB.length; j++) {
+            const b1 = polyB[j];
+            const b2 = polyB[(j + 1) % polyB.length];
+            const d1 = ptToSegDist(a1.x, a1.y, b1.x, b1.y, b2.x, b2.y);
+            const d2 = ptToSegDist(a2.x, a2.y, b1.x, b1.y, b2.x, b2.y);
+            const d3 = ptToSegDist(b1.x, b1.y, a1.x, a1.y, a2.x, a2.y);
+            const d4 = ptToSegDist(b2.x, b2.y, a1.x, a1.y, a2.x, a2.y);
+            if (Math.min(d1, d2, d3, d4) < minAllowed) {
+              return true;
+            }
+          }
+        }
+      }
+
       return false;
     }
 
     function getPlacedPolygonWorldCoords(item, baseVerts) {
-      const cxLocal = item.w / 2;
-      const cyLocal = item.h / 2;
-      // Для повёрнутого на 90° габарита используем базовые габариты до поворота и сдвигаем в (item.x, item.y)
       const rawW = (item.angle === 90 || item.angle === 270) ? item.h : item.w;
       const rawH = (item.angle === 90 || item.angle === 270) ? item.w : item.h;
       const verts = generateRegularPolygonVertices(rawW, rawH, baseVerts.length);
@@ -989,6 +1021,7 @@
       return rot.map(p => ({ x: item.x + (p.x - minRx), y: item.y + (p.y - minRy) }));
     }
 
+    // Точный раскрой многоугольников на сетке с шагом, адаптированным под gap (включая gap = 0 стык-в-стык)
     function packSimplePolygon(zoneW, zoneH, w, h, sides, gap, mode) {
       const grid0 = packRectRegularGrid(zoneW, zoneH, w, h, gap, false);
       const grid90 = packRectRegularGrid(zoneW, zoneH, h, w, gap, true);
@@ -1002,12 +1035,13 @@
         { items: grid90, label: `Сетка 90° (${sides}-угольник)` }
       ];
 
-      // Честный бескомпромиссный проход укладки многоугольников по строкам с проверкой отсутствия пересечений
-      // и соблюдения зазора gap между реальными гранями соседних фигур!
       const orientations = [
         { itemW: w, itemH: h, baseAng: 0 },
         { itemW: h, itemH: w, baseAng: 90 }
       ];
+
+      const fineStepX = gap <= 1e-6 ? Math.max(0.5, Math.min(w * 0.05, 1.5)) : Math.max(1.0, Math.min(w * 0.15, 3.0));
+      const fineStepY = gap <= 1e-6 ? Math.max(0.5, Math.min(h * 0.05, 1.5)) : Math.max(1.0, Math.min(h * 0.15, 3.0));
 
       for (const ori of orientations) {
         if (ori.itemW > zoneW + 1e-6 || ori.itemH > zoneH + 1e-6) continue;
@@ -1016,16 +1050,16 @@
         const placed = [];
         const placedPolys = [];
 
-        const stepX = Math.max(2, Math.min(ori.itemW * 0.25, 5));
-        const stepY = Math.max(2, Math.min(ori.itemH * 0.25, 5));
+        const stepX = (ori.baseAng === 90) ? fineStepY : fineStepX;
+        const stepY = (ori.baseAng === 90) ? fineStepX : fineStepY;
 
         for (let gy = 0; gy <= zoneH - ori.itemH + 1e-6; gy += stepY) {
           for (let gx = 0; gx <= zoneW - ori.itemW + 1e-6; gx += stepX) {
             for (let aIdx = 0; aIdx < anglesToTry.length; aIdx++) {
               const ang = anglesToTry[aIdx];
               const candidateItem = {
-                x: gx,
-                y: gy,
+                x: Number(gx.toFixed(2)),
+                y: Number(gy.toFixed(2)),
                 w: ori.itemW,
                 h: ori.itemH,
                 angle: ang,
@@ -1033,7 +1067,6 @@
               };
               const candPoly = getPlacedPolygonWorldCoords(candidateItem, baseVerts);
 
-              // Проверяем, не пересекается ли новый многоугольник (с учётом зазора gap) ни с одним уже уложенным
               let collides = false;
               for (let k = 0; k < placedPolys.length; k++) {
                 if (polygonsOverlapWithGap(candPoly, placedPolys[k], gap)) {
@@ -1052,9 +1085,10 @@
         }
 
         if (placed.length > 0) {
+          const gapNote = gap <= 1e-6 ? 'стык в стык (0 мм)' : `зазор ${gap} мм`;
           const desc = sides === 3
-            ? `Встречный нестинг треугольников без наложений (${ori.baseAng}°/180°)`
-            : `Плотный нестинг ${sides}-угольников без наложений (${ori.baseAng}°)`;
+            ? `Встречный нестинг треугольников, ${gapNote} (${ori.baseAng}°/180°)`
+            : `Плотный нестинг ${sides}-угольников, ${gapNote} (${ori.baseAng}°)`;
           candidates.push({ items: placed, label: desc });
         }
       }
@@ -2851,6 +2885,39 @@
     // ============================================================================
     // 7. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ UI И ОБРАБОТЧИКИ СОБЫТИЙ
     // ============================================================================
+    function getRegularPolygonAspectRatio(sides) {
+      const verts = generateRegularPolygonVertices(100, 100, sides);
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      verts.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      });
+      return Math.max(0.1, (maxX - minX) / Math.max(1e-6, maxY - minY));
+    }
+
+    function syncPolyDimensions(changedField) {
+      if (state.shapeType !== 'poly') return;
+      const chk = document.getElementById('chkPolyProportional');
+      if (!chk || !chk.checked) return;
+
+      const wEl = document.getElementById('inputWidth');
+      const hEl = document.getElementById('inputHeight');
+      const sides = Math.max(3, Math.min(24, parseInt(document.getElementById('inputPolySides').value, 10) || 6));
+      const ratioWH = getRegularPolygonAspectRatio(sides);
+
+      if (changedField === 'width' || changedField === 'sides') {
+        const wVal = Math.max(5, Math.min(680, parseFloat(wEl.value) || 90));
+        const newH = Math.max(5, Math.min(680, Number((wVal / ratioWH).toFixed(1))));
+        hEl.value = newH;
+      } else if (changedField === 'height') {
+        const hVal = Math.max(5, Math.min(680, parseFloat(hEl.value) || 50));
+        const newW = Math.max(5, Math.min(680, Number((hVal * ratioWH).toFixed(1))));
+        wEl.value = newW;
+      }
+    }
+
     function readInputs() {
       state.width = Math.max(5, Math.min(680, parseFloat(document.getElementById('inputWidth').value) || 90));
       state.height = Math.max(5, Math.min(680, parseFloat(document.getElementById('inputHeight').value) || 50));
@@ -2974,9 +3041,14 @@
 
       document.getElementById('btnSubRect').addEventListener('click', () => setShapeType('rect'));
       document.getElementById('btnSubOval').addEventListener('click', () => setShapeType('oval'));
-      document.getElementById('btnSubPoly').addEventListener('click', () => setShapeType('poly'));
+      document.getElementById('btnSubPoly').addEventListener('click', () => {
+        setShapeType('poly');
+        syncPolyDimensions('width');
+        recalculateAndRender();
+      });
 
       document.getElementById('inputPolySides').addEventListener('input', () => {
+        syncPolyDimensions('sides');
         recalculateAndRender();
       });
       document.querySelectorAll('.preset-sides-btn').forEach(btn => {
@@ -2986,8 +3058,21 @@
             b.className = 'preset-sides-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer';
           });
           btn.className = 'preset-sides-btn px-2 py-1 rounded bg-amber-500/25 border border-amber-500/50 text-[10px] font-mono text-amber-200 font-bold cursor-pointer';
+          syncPolyDimensions('sides');
           recalculateAndRender();
         });
+      });
+      document.getElementById('chkPolyProportional').addEventListener('change', (e) => {
+        if (e.target.checked) syncPolyDimensions('width');
+        recalculateAndRender();
+      });
+      document.getElementById('inputWidth').addEventListener('input', () => {
+        syncPolyDimensions('width');
+        recalculateAndRender();
+      });
+      document.getElementById('inputHeight').addEventListener('input', () => {
+        syncPolyDimensions('height');
+        recalculateAndRender();
       });
 
       document.getElementById('btnPhotoLayoutSet').addEventListener('click', () => setPhotoLayoutMode('set'));
