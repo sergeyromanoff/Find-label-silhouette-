@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- Запрет индексации поисковыми системами (Google, Яндекс и др.) -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="googlebot" content="noindex, nofollow">
+  <title>Контур этикетки по фото → SVG (1:1 мм)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    input[type="range"] { accent-color: #2563eb; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen font-sans">
+
+  <div class="max-w-2xl mx-auto p-4 pb-12 space-y-4">
+    <!-- Шапка -->
+    <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 flex items-center justify-between">
+      <div>
+        <h1 class="text-lg font-bold text-slate-900 leading-tight">Контур по фото → SVG</h1>
+        <p class="text-xs text-slate-500 mt-0.5">Снятие грубой формы этикетки 1:1 в миллиметрах</p>
+      </div>
+      <span id="cvStatus" class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
+        Загрузка OpenCV...
+      </span>
+    </div>
+
+    <!-- Шаг 1: Фото -->
+    <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-semibold text-slate-700">1. Фото этикетки на контрастном фоне</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="cursor-pointer flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm py-3 px-4 rounded-xl transition text-center">
+          <span>📷 Камера</span>
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+        </label>
+        <label class="cursor-pointer flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm py-3 px-4 rounded-xl transition text-center">
+          <span>🖼️ Галерея</span>
+          <input type="file" id="fileInput" accept="image/*" class="hidden">
+        </label>
+      </div>
+      <p class="text-[11px] text-slate-400">Совет: кладите светлую этикетку на тёмный стол, а тёмную — на белый лист, снимайте строго сверху.</p>
+    </div>
+
+    <!-- Рабочая область -->
+    <div id="workspace" class="hidden space-y-4">
+      <!-- Предпросмотр -->
+      <div class="bg-white rounded-2xl shadow-sm p-3 border border-slate-200">
+        <div class="relative w-full bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center min-h-[240px]">
+          <canvas id="outputCanvas" class="max-w-full max-h-[420px] object-contain"></canvas>
+        </div>
+        <div class="flex justify-between items-center mt-2 px-1 text-xs text-slate-500">
+          <span id="polyInfo">Вершин: —</span>
+          <span id="aspectInfo">Пропорция: —</span>
+        </div>
+      </div>
+
+      <!-- Шаг 2: Настройка контура -->
+      <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-4">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-slate-700">2. Настройка грубой формы</span>
+          <label class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer">
+            <input type="checkbox" id="invertCheck" class="rounded border-slate-300 text-blue-600">
+            <span>Тёмная на светлом</span>
+          </label>
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-600">Порог контраста (отсечение теней)</span>
+            <span id="threshVal" class="font-semibold text-slate-900">130</span>
+          </div>
+          <input type="range" id="threshSlider" min="10" max="245" value="130" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-600">Упрощение формы (грубость контура)</span>
+            <span id="epsilonVal" class="font-semibold text-slate-900">1.5%</span>
+          </div>
+          <input type="range" id="epsilonSlider" min="2" max="60" value="15" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+        </div>
+      </div>
+
+      <!-- Шаг 3: Реальный размер в мм -->
+      <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-3">
+        <span class="text-sm font-semibold text-slate-700 block">3. Реальный размер этикетки (мм)</span>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Ширина (мм)</label>
+            <input type="number" id="widthMm" step="0.1" min="1" placeholder="Например, 70"
+              class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-base font-semibold focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">Высота (мм)</label>
+            <input type="number" id="heightMm" step="0.1" min="1" placeholder="Авто"
+              class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-base font-semibold focus:outline-none focus:border-blue-500">
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400">Введите любой один замеренный размер — второй пересчитается автоматически.</p>
+      </div>
+
+      <!-- Шаг 4: Скачивание -->
+      <button id="downloadSvgBtn" disabled
+        class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 px-5 rounded-2xl shadow-sm transition text-sm">
+        ⬇️ Скачать SVG контур (1:1 в мм)
+      </button>
+    </div>
+  </div>
+
+  <!-- Скрытое исходное изображение -->
+  <img id="hiddenImg" class="hidden" alt="">
+
+  <script>
+    let cvReady = false;
+    let normalizedPoints = []; // [{x: 0..1, y: 0..1}]
+    let aspectRatio = 1;       // width / height
+
+    const cvStatus = document.getElementById('cvStatus');
+    const fileInput = document.getElementById('fileInput');
+    const cameraInput = document.getElementById('cameraInput');
+    const hiddenImg = document.getElementById('hiddenImg');
+    const workspace = document.getElementById('workspace');
+    const outputCanvas = document.getElementById('outputCanvas');
+
+    const threshSlider = document.getElementById('threshSlider');
+    const threshVal = document.getElementById('threshVal');
+    const epsilonSlider = document.getElementById('epsilonSlider');
+    const epsilonVal = document.getElementById('epsilonVal');
+    const invertCheck = document.getElementById('invertCheck');
+
+    const widthMmInput = document.getElementById('widthMm');
+    const heightMmInput = document.getElementById('heightMm');
+    const polyInfo = document.getElementById('polyInfo');
+    const aspectInfo = document.getElementById('aspectInfo');
+    const downloadSvgBtn = document.getElementById('downloadSvgBtn');
+
+    function onOpenCvReady() {
+      cvReady = true;
+      cvStatus.textContent = 'OpenCV готов';
+      cvStatus.className = 'text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800';
+      if (hiddenImg.src) processImage();
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        hiddenImg.onload = () => {
+          workspace.classList.remove('hidden');
+          if (cvReady) processImage();
+        };
+        hiddenImg.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    fileInput.addEventListener('change', handleImageUpload);
+    cameraInput.addEventListener('change', handleImageUpload);
+
+    threshSlider.addEventListener('input', () => {
+      threshVal.textContent = threshSlider.value;
+      if (cvReady && hiddenImg.src) processImage();
+    });
+
+    epsilonSlider.addEventListener('input', () => {
+      epsilonVal.textContent = (epsilonSlider.value / 10).toFixed(1) + '%';
+      if (cvReady && hiddenImg.src) processImage();
+    });
+
+    invertCheck.addEventListener('change', () => {
+      if (cvReady && hiddenImg.src) processImage();
+    });
+
+    widthMmInput.addEventListener('input', () => {
+      const w = parseFloat(widthMmInput.value);
+      if (w > 0 && aspectRatio > 0) {
+        heightMmInput.value = (w / aspectRatio).toFixed(1);
+      } else {
+        heightMmInput.value = '';
+      }
+      updateDownloadButton();
+    });
+
+    heightMmInput.addEventListener('input', () => {
+      const h = parseFloat(heightMmInput.value);
+      if (h > 0 && aspectRatio > 0) {
+        widthMmInput.value = (h * aspectRatio).toFixed(1);
+      } else {
+        widthMmInput.value = '';
+      }
+      updateDownloadButton();
+    });
+
+    function updateDownloadButton() {
+      const w = parseFloat(widthMmInput.value);
+      const h = parseFloat(heightMmInput.value);
+      downloadSvgBtn.disabled = !(normalizedPoints.length >= 3 && w > 0 && h > 0);
+    }
+
+    function processImage() {
+      if (!cvReady || !hiddenImg.naturalWidth) return;
+
+      const maxDim = 900;
+      let scale = 1;
+      if (Math.max(hiddenImg.naturalWidth, hiddenImg.naturalHeight) > maxDim) {
+        scale = maxDim / Math.max(hiddenImg.naturalWidth, hiddenImg.naturalHeight);
+      }
+      const w = Math.round(hiddenImg.naturalWidth * scale);
+      const h = Math.round(hiddenImg.naturalHeight * scale);
+
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = w;
+      tempCanvas.height = h;
+      const ctx = tempCanvas.getContext('2d');
+      ctx.drawImage(hiddenImg, 0, 0, w, h);
+
+      let src = cv.imread(tempCanvas);
+      let gray = new cv.Mat();
+      let blurred = new cv.Mat();
+      let thresh = new cv.Mat();
+      let contours = new cv.MatVector();
+      let hierarchy = new cv.Mat();
+
+      try {
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+        cv.GaussianBlur(gray, blurred, new cv.Size(7, 7), 0);
+
+        const threshType = invertCheck.checked ? cv.THRESH_BINARY_INV : cv.THRESH_BINARY;
+        cv.threshold(blurred, thresh, parseInt(threshSlider.value, 10), 255, threshType);
+
+        let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(9, 9));
+        cv.morphologyEx(thresh, thresh, cv.MORPH_CLOSE, kernel);
+        kernel.delete();
+
+        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+        let maxArea = 0;
+        let bestIdx = -1;
+        for (let i = 0; i < contours.size(); i++) {
+          let cnt = contours.get(i);
+          let area = cv.contourArea(cnt);
+          let rect = cv.boundingRect(cnt);
+          const touchesBorder = rect.x <= 2 || rect.y <= 2 || (rect.x + rect.width) >= w - 2 || (rect.y + rect.height) >= h - 2;
+          if (!touchesBorder && area > maxArea && area > (w * h * 0.01)) {
+            maxArea = area;
+            bestIdx = i;
+          }
+        }
+
+        outputCanvas.width = w;
+        outputCanvas.height = h;
+        const outCtx = outputCanvas.getContext('2d');
+        outCtx.drawImage(tempCanvas, 0, 0);
+
+        if (bestIdx !== -1) {
+          let bestCnt = contours.get(bestIdx);
+          let approx = new cv.Mat();
+          let peri = cv.arcLength(bestCnt, true);
+          let eps = (parseFloat(epsilonSlider.value) / 1000) * peri;
+          cv.approxPolyDP(bestCnt, approx, eps, true);
+
+          let pts = [];
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          for (let i = 0; i < approx.rows; i++) {
+            let px = approx.data32S[i * 2];
+            let py = approx.data32S[i * 2 + 1];
+            pts.push({ x: px, y: py });
+            if (px < minX) minX = px;
+            if (py < minY) minY = py;
+            if (px > maxX) maxX = px;
+            if (py > maxY) maxY = py;
+          }
+
+          const boxW = Math.max(1, maxX - minX);
+          const boxH = Math.max(1, maxY - minY);
+          aspectRatio = boxW / boxH;
+
+          normalizedPoints = pts.map(p => ({
+            x: (p.x - minX) / boxW,
+            y: (p.y - minY) / boxH
+          }));
+
+          outCtx.save();
+          outCtx.strokeStyle = '#10b981';
+          outCtx.lineWidth = Math.max(3, Math.round(w / 200));
+          outCtx.fillStyle = 'rgba(16, 185, 129, 0.22)';
+          outCtx.beginPath();
+          pts.forEach((p, idx) => {
+            if (idx === 0) outCtx.moveTo(p.x, p.y);
+            else outCtx.lineTo(p.x, p.y);
+          });
+          outCtx.closePath();
+          outCtx.fill();
+          outCtx.stroke();
+
+          outCtx.fillStyle = '#ffffff';
+          outCtx.strokeStyle = '#059669';
+          outCtx.lineWidth = 2;
+          pts.forEach(p => {
+            outCtx.beginPath();
+            outCtx.arc(p.x, p.y, Math.max(4, Math.round(w / 180)), 0, Math.PI * 2);
+            outCtx.fill();
+            outCtx.stroke();
+          });
+          outCtx.restore();
+
+          polyInfo.textContent = `Вершин: ${pts.length}`;
+          aspectInfo.textContent = `Пропорция Ш/В: ${aspectRatio.toFixed(2)}`;
+
+          if (parseFloat(widthMmInput.value) > 0) {
+            heightMmInput.value = (parseFloat(widthMmInput.value) / aspectRatio).toFixed(1);
+          }
+
+          approx.delete();
+        } else {
+          normalizedPoints = [];
+          polyInfo.textContent = 'Контур не найден (подвиньте порог)';
+          aspectInfo.textContent = 'Пропорция: —';
+        }
+      } finally {
+        src.delete();
+        gray.delete();
+        blurred.delete();
+        thresh.delete();
+        contours.delete();
+        hierarchy.delete();
+        updateDownloadButton();
+      }
+    }
+
+    downloadSvgBtn.addEventListener('click', () => {
+      const wMm = parseFloat(widthMmInput.value);
+      const hMm = parseFloat(heightMmInput.value);
+      if (normalizedPoints.length < 3 || !wMm || !hMm) return;
+
+      const pointsStr = normalizedPoints
+        .map(p => `${(p.x * wMm).toFixed(3)},${(p.y * hMm).toFixed(3)}`)
+        .join(' ');
+
+      const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${wMm.toFixed(2)}mm" height="${hMm.toFixed(2)}mm" viewBox="0 0 ${wMm.toFixed(3)} ${hMm.toFixed(3)}">
+  <polygon points="${pointsStr}" fill="none" stroke="#ff0000" stroke-width="0.2" />
+</svg>`;
+
+      const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `label-contour-${wMm.toFixed(0)}x${hMm.toFixed(0)}mm.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  </script>
+  <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady()"></script>
+</body>
+</html>
