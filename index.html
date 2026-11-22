@@ -291,6 +291,19 @@
                 </p>
 
                 <div id="detectedShapesList" class="space-y-2.5"></div>
+
+                <!-- Кнопка ручного запуска полигонального нестинга -->
+                <div class="pt-2 space-y-1.5">
+                  <button id="runPhotoNestingBtn" type="button" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition cursor-pointer">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                    <span>Разложить набор на листе</span>
+                  </button>
+                  <div id="photoNestingDirtyHint" class="hidden text-center text-[11px] text-amber-300 font-medium">
+                    Параметры изменены — нажмите «Разложить набор на листе» для пересчёта
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -335,13 +348,12 @@
             <div class="flex items-center justify-between gap-2">
               <label for="selectPhotoAngleStep" class="text-xs text-slate-400">Вращение контуров на листе:</label>
               <select id="selectPhotoAngleStep" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500">
-                <option value="15" selected>Любой угол (шаг 15° — 24 угла)</option>
-                <option value="10">Сверхплотно (шаг 10° — 36 углов)</option>
-                <option value="30">Быстро (шаг 30° — 12 углов)</option>
-                <option value="45">Диагонали (шаг 45° — 8 углов)</option>
-                <option value="90">Ортогонально / «валетом» (0°, 90°, 180°, 270°)</option>
-                <option value="180">Только «валетом» (0° и 180°)</option>
+                <option value="180" selected>Офсет: «валетом» (0° и 180°)</option>
+                <option value="90">Офсет: ортогонально (0°, 90°, 180°, 270°)</option>
                 <option value="0">Без поворота (строго 0°)</option>
+                <option value="45">Диагонали (шаг 45° — 8 углов)</option>
+                <option value="30">Свободно (шаг 30° — 12 углов)</option>
+                <option value="15">Свободно (шаг 15° — 24 угла)</option>
               </select>
             </div>
             <p class="text-[11px] text-slate-400 leading-snug">
@@ -560,6 +572,8 @@
       quantity: 10000,     // шт (или наборов в режиме 'photo')
       makeready: 150,      // листов
       activeResult: null,
+      photoNestingDirty: false,
+      cachedPhotoResults: { '35x50': null, '50x70': null },
       zoom: 1,
       panX: 0,
       panY: 0,
@@ -1044,93 +1058,99 @@
       }
     }
 
-    // Укладка K полных наборов многоугольников на зону zoneW x zoneH
-    function tryPackPolygonSetCopies(zoneW, zoneH, preparedShapes, numSets, gapMm, resPerMm) {
-      // Расширяем виртуальную сетку листа на gapMm, т.к. каждая деталь имеет рубашку +gapMm/2 по краям
-      const gridW = Math.floor((zoneW + gapMm) * resPerMm);
-      const gridH = Math.floor((zoneH + gapMm) * resPerMm);
-      const sheetWordsPerRow = Math.ceil(gridW / 32);
-
+    // Один проход укладки с заданным направлением (rowMajor: true = ровные ряды слева направо, false = ровные колонки сверху вниз)
+    // и предпочтительным базовым углом (baseAngle: 0 или 90 для 90-градусного режима)
+    function runSinglePassPolygonPack(gridW, gridH, sheetWordsPerRow, queue, gapMm, resPerMm, rowMajor, baseAngle) {
       const sheetRows = new Array(gridH);
       for (let y = 0; y < gridH; y++) {
         sheetRows[y] = new Uint32Array(sheetWordsPerRow);
       }
 
-      // Формируем очередь деталей для numSets комплектов
-      const queue = [];
-      for (let s = 0; s < numSets; s++) {
-        preparedShapes.forEach(ps => {
-          for (let q = 0; q < ps.qtyInSet; q++) {
-            queue.push({
-              shapeIndex: ps.shapeIndex,
-              shapeId: ps.id,
-              shapeName: ps.name,
-              setNum: s + 1,
-              variants: ps.variants,
-              sortArea: ps.realAreaMm2
-            });
-          }
-        });
-      }
-
-      // Сначала укладываем более крупные детали комплекта
-      queue.sort((a, b) => b.sortArea - a.sortArea);
-
-      // Кэш минимальной свободной координаты Y для каждого размера (чтобы не сканировать занятый верх листа)
       const placed = [];
       const halfGap = gapMm * 0.5;
-
-      // Шаг сканирования сетки: 1 ячейка при малом числе деталей, 2 ячейки при плотном листе для мгновенного отклика
-      const scanStep = queue.length > 70 ? 2 : 1;
+      const scanStep = queue.length > 80 ? 2 : 1;
 
       for (let idx = 0; idx < queue.length; idx++) {
         const piece = queue[idx];
         let bestPos = null;
         let bestScore = Infinity;
 
-        // Пробуем все углы поворота для этой детали и выбираем самый плотный (Bottom-Left + минимальная высота)
-        for (let vIdx = 0; vIdx < piece.variants.length; vIdx++) {
-          const variant = piece.variants[vIdx];
+        // Сортируем варианты углов так, чтобы предпочтительные для офсета (baseAngle и baseAngle+180° «валетом») проверялись первыми
+        const orderedVariants = piece.variants.slice().sort((a, b) => {
+          const isPrefA = (a.angle === baseAngle || a.angle === (baseAngle + 180) % 360) ? 0 : 1;
+          const isPrefB = (b.angle === baseAngle || b.angle === (baseAngle + 180) % 360) ? 0 : 1;
+          return isPrefA - isPrefB;
+        });
+
+        for (let vIdx = 0; vIdx < orderedVariants.length; vIdx++) {
+          const variant = orderedVariants[vIdx];
           const maxGx = gridW - variant.maskW;
           const maxGy = gridH - variant.maskH;
           if (maxGx < 0 || maxGy < 0) continue;
 
-          // Слегка чередуем приоритет угла (например, 0° и 180° «валетом») для лучшего зацепления
-          for (let gy = 0; gy <= maxGy; gy += scanStep) {
-            // Оценка по Y: если уже хуже лучшего найденного для других углов, дальше вниз не идём
-            const baseScoreY = gy + variant.maskH * 0.35;
-            if (baseScoreY > bestScore) break;
+          // Небольшой штраф за «нестандартный» наклон, чтобы при равной плотности лист оставался ровным и аккуратным
+          const isPreferredAxis = (variant.angle === baseAngle || variant.angle === (baseAngle + 180) % 360);
+          const anglePenalty = isPreferredAxis ? 0 : 1.8;
 
+          if (rowMajor) {
+            // Заполняем лист ровными горизонтальными рядами (сверху вниз, слева направо)
+            for (let gy = 0; gy <= maxGy; gy += scanStep) {
+              const baseScoreY = gy + variant.maskH * 0.45 + anglePenalty;
+              if (baseScoreY > bestScore) break;
+
+              for (let gx = 0; gx <= maxGx; gx += scanStep) {
+                const score = baseScoreY + gx * 0.04;
+                if (score >= bestScore) break;
+
+                if (canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, gx, gy)) {
+                  let exactGx = gx;
+                  let exactGy = gy;
+                  if (scanStep > 1) {
+                    while (exactGy > 0 && canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, exactGx, exactGy - 1)) exactGy--;
+                    while (exactGx > 0 && canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, exactGx - 1, exactGy)) exactGx--;
+                  }
+                  const exactScore = exactGy + variant.maskH * 0.45 + exactGx * 0.04 + anglePenalty;
+                  if (exactScore < bestScore) {
+                    bestScore = exactScore;
+                    bestPos = { gx: exactGx, gy: exactGy, variant };
+                  }
+                  break;
+                }
+              }
+            }
+          } else {
+            // Заполняем лист ровными вертикальными колонками (слева направо, сверху вниз)
             for (let gx = 0; gx <= maxGx; gx += scanStep) {
-              const score = baseScoreY + gx * 0.08;
-              if (score >= bestScore) break;
+              const baseScoreX = gx + variant.maskW * 0.45 + anglePenalty;
+              if (baseScoreX > bestScore) break;
 
-              if (canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, gx, gy)) {
-                // Уточняем позицию на 1 пиксель влево/вверх, если scanStep > 1
-                let exactGx = gx;
-                let exactGy = gy;
-                if (scanStep > 1) {
-                  while (exactGy > 0 && canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, exactGx, exactGy - 1)) exactGy--;
-                  while (exactGx > 0 && canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, exactGx - 1, exactGy)) exactGx--;
+              for (let gy = 0; gy <= maxGy; gy += scanStep) {
+                const score = baseScoreX + gy * 0.04;
+                if (score >= bestScore) break;
+
+                if (canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, gx, gy)) {
+                  let exactGx = gx;
+                  let exactGy = gy;
+                  if (scanStep > 1) {
+                    while (exactGx > 0 && canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, exactGx - 1, exactGy)) exactGx--;
+                    while (exactGy > 0 && canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, exactGx, exactGy - 1)) exactGy--;
+                  }
+                  const exactScore = exactGx + variant.maskW * 0.45 + exactGy * 0.04 + anglePenalty;
+                  if (exactScore < bestScore) {
+                    bestScore = exactScore;
+                    bestPos = { gx: exactGx, gy: exactGy, variant };
+                  }
+                  break;
                 }
-                const exactScore = exactGy + variant.maskH * 0.35 + exactGx * 0.08;
-                if (exactScore < bestScore) {
-                  bestScore = exactScore;
-                  bestPos = { gx: exactGx, gy: exactGy, variant };
-                }
-                break; // Для этого Y самый левый X найден — переходим к следующему углу
               }
             }
           }
         }
 
-        if (!bestPos) {
-          return null; // Не поместилось заданное число комплектов
-        }
+        if (!bestPos) return null;
 
         commitBitMask(sheetRows, sheetWordsPerRow, bestPos.variant, bestPos.gx, bestPos.gy);
 
-        // Переводим позицию маски обратно в реальные миллиметры внутри допустимой зоны (учитывая смещение halfGap)
         const realX = Math.max(0, bestPos.gx / resPerMm - halfGap);
         const realY = Math.max(0, bestPos.gy / resPerMm - halfGap);
 
@@ -1150,6 +1170,60 @@
       }
 
       return placed;
+    }
+
+    // Укладка K полных наборов многоугольников на зону zoneW x zoneH
+    function tryPackPolygonSetCopies(zoneW, zoneH, preparedShapes, numSets, gapMm, resPerMm) {
+      const gridW = Math.floor((zoneW + gapMm) * resPerMm);
+      const gridH = Math.floor((zoneH + gapMm) * resPerMm);
+      const sheetWordsPerRow = Math.ceil(gridW / 32);
+
+      const queue = [];
+      for (let s = 0; s < numSets; s++) {
+        preparedShapes.forEach(ps => {
+          for (let q = 0; q < ps.qtyInSet; q++) {
+            queue.push({
+              shapeIndex: ps.shapeIndex,
+              shapeId: ps.id,
+              shapeName: ps.name,
+              setNum: s + 1,
+              variants: ps.variants,
+              sortArea: ps.realAreaMm2
+            });
+          }
+        });
+      }
+
+      queue.sort((a, b) => b.sortArea - a.sortArea);
+
+      // Проверяем ровную укладку по рядам и по колонкам (и базовые оси 0°/180° и 90°/270°), выбирая самую компактную!
+      const strategies = [
+        { rowMajor: true, baseAngle: 0 },
+        { rowMajor: false, baseAngle: 0 },
+        { rowMajor: true, baseAngle: 90 },
+        { rowMajor: false, baseAngle: 90 }
+      ];
+
+      let bestPlaced = null;
+      let bestBoundingArea = Infinity;
+
+      for (const st of strategies) {
+        const res = runSinglePassPolygonPack(gridW, gridH, sheetWordsPerRow, queue, gapMm, resPerMm, st.rowMajor, st.baseAngle);
+        if (res) {
+          let maxRight = 0, maxBottom = 0;
+          res.forEach(it => {
+            if (it.x + it.w > maxRight) maxRight = it.x + it.w;
+            if (it.y + it.h > maxBottom) maxBottom = it.y + it.h;
+          });
+          const usedBox = maxRight * maxBottom;
+          if (usedBox < bestBoundingArea) {
+            bestBoundingArea = usedBox;
+            bestPlaced = res;
+          }
+        }
+      }
+
+      return bestPlaced;
     }
 
     function calculatePhotoSetLayoutForFormat(formatObj) {
@@ -1259,12 +1333,83 @@
       };
     }
 
+    function markPhotoNestingDirty() {
+      state.photoNestingDirty = true;
+      const hint = document.getElementById('photoNestingDirtyHint');
+      const btn = document.getElementById('runPhotoNestingBtn');
+      if (hint) hint.classList.remove('hidden');
+      if (btn) {
+        btn.classList.add('ring-2', 'ring-amber-400/70');
+      }
+    }
+
+    function runPhotoNestingManual() {
+      const btn = document.getElementById('runPhotoNestingBtn');
+      const hint = document.getElementById('photoNestingDirtyHint');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9" stroke-dasharray="28" /></svg><span>Выполняется раскладка...</span>`;
+      }
+
+      // Даём браузеру отрисовать состояние кнопки перед тяжёлым расчётом
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          try {
+            readInputs();
+            state.cachedPhotoResults['35x50'] = calculatePhotoSetLayoutForFormat(SHEET_FORMATS['35x50']);
+            state.cachedPhotoResults['50x70'] = calculatePhotoSetLayoutForFormat(SHEET_FORMATS['50x70']);
+            state.photoNestingDirty = false;
+            if (hint) hint.classList.add('hidden');
+            if (btn) btn.classList.remove('ring-2', 'ring-amber-400/70');
+            recalculateAndRender();
+            const activeRes = state.format === '35x50' ? state.cachedPhotoResults['35x50'] : state.cachedPhotoResults['50x70'];
+            if (activeRes && activeRes.count > 0) {
+              showToast(`Готово: ${activeRes.count} наб. (${activeRes.totalPiecesOnSheet} дет.) на листе`, 'success');
+            }
+          } finally {
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3" /></svg><span>Разложить набор на листе</span>`;
+            }
+          }
+        }, 20);
+      });
+    }
+
     // ============================================================================
     // 3. ЕДИНЫЙ ДИСПЕТЧЕР РАСЧЁТА
     // ============================================================================
     function calculateLayoutForFormat(formatObj) {
       if (state.shapeType === 'photo') {
-        return calculatePhotoSetLayoutForFormat(formatObj);
+        const cached = state.cachedPhotoResults[formatObj.id];
+        if (cached) {
+          // Обновляем только расчёт тиража (листы нетто/брутто), если изменился тираж или приладка — это мгновенно
+          const netSheets = cached.count > 0 ? Math.ceil(state.quantity / cached.count) : 0;
+          const grossSheets = cached.count > 0 ? netSheets + state.makeready : 0;
+          return {
+            ...cached,
+            netSheets,
+            grossSheets,
+            label: state.photoNestingDirty
+              ? `${cached.label} (изменено — нажмите «Разложить»)`
+              : cached.label
+          };
+        }
+        return {
+          format: formatObj,
+          isPhotoSetMode: true,
+          items: [],
+          count: 0,
+          totalPiecesOnSheet: 0,
+          piecesPerSet: 0,
+          label: 'Настройте контуры и нажмите «Разложить набор на листе»',
+          gainOverGrid: 0,
+          singlePieceArea: 0,
+          zoneUtilPct: 0,
+          sheetUtilPct: 0,
+          netSheets: 0,
+          grossSheets: 0
+        };
       }
 
       const zoneW = formatObj.workW;
@@ -1859,6 +2004,8 @@
           selectedPhotoShapeIdx = 0;
         }
 
+        state.cachedPhotoResults = { '35x50': null, '50x70': null };
+        markPhotoNestingDirty();
         renderPhotoPreviewCanvas();
         renderDetectedShapesCards();
         recalculateAndRender();
@@ -2128,7 +2275,7 @@
         inp.addEventListener('input', () => {
           const idx = parseInt(inp.dataset.idx, 10);
           photoShapes[idx].name = inp.value;
-          recalculateAndRender();
+          markPhotoNestingDirty();
         });
       });
 
@@ -2151,7 +2298,7 @@
           const confirmBtn = card.querySelector('.confirm-align-btn');
           if (confirmBtn) confirmBtn.remove();
 
-          recalculateAndRender();
+          markPhotoNestingDirty();
         });
       });
 
@@ -2170,7 +2317,7 @@
           photoShapes[idx].alignedConfirmed = true;
           renderPhotoPreviewCanvas();
           renderDetectedShapesCards();
-          recalculateAndRender();
+          markPhotoNestingDirty();
         });
       });
 
@@ -2190,7 +2337,7 @@
           selectedPhotoShapeIdx = idx;
           photoShapes[idx].widthMm = inp.value;
           updateSetSummaryBadgeOnly();
-          recalculateAndRender();
+          markPhotoNestingDirty();
         });
       });
 
@@ -2200,7 +2347,7 @@
           selectedPhotoShapeIdx = idx;
           photoShapes[idx].heightMm = inp.value;
           updateSetSummaryBadgeOnly();
-          recalculateAndRender();
+          markPhotoNestingDirty();
         });
       });
 
@@ -2212,7 +2359,7 @@
           photoShapes[idx].qtyInSet = val;
           renderPhotoPreviewCanvas();
           updateSetSummaryBadgeOnly();
-          recalculateAndRender();
+          markPhotoNestingDirty();
         });
         inp.addEventListener('change', () => {
           renderDetectedShapesCards();
@@ -2225,7 +2372,7 @@
           photoShapes[idx].qtyInSet = 0;
           renderPhotoPreviewCanvas();
           renderDetectedShapesCards();
-          recalculateAndRender();
+          markPhotoNestingDirty();
         });
       });
     }
@@ -2374,12 +2521,28 @@
         });
       });
 
-      ['inputWidth', 'inputHeight', 'inputGap', 'selectMode', 'inputQuantity', 'inputMakeready'].forEach(id => {
+      ['inputWidth', 'inputHeight', 'selectMode', 'inputQuantity', 'inputMakeready'].forEach(id => {
         document.getElementById(id).addEventListener('input', recalculateAndRender);
         document.getElementById(id).addEventListener('change', recalculateAndRender);
       });
 
-      document.getElementById('selectPhotoAngleStep').addEventListener('change', recalculateAndRender);
+      ['inputGap'].forEach(id => {
+        const handler = () => {
+          if (state.shapeType === 'photo') {
+            markPhotoNestingDirty();
+          } else {
+            recalculateAndRender();
+          }
+        };
+        document.getElementById(id).addEventListener('input', handler);
+        document.getElementById(id).addEventListener('change', handler);
+      });
+
+      document.getElementById('selectPhotoAngleStep').addEventListener('change', () => {
+        if (state.shapeType === 'photo') markPhotoNestingDirty();
+      });
+
+      document.getElementById('runPhotoNestingBtn').addEventListener('click', runPhotoNestingManual);
 
       document.getElementById('fileInput').addEventListener('change', handleImageUpload);
       document.getElementById('cameraInput').addEventListener('change', handleImageUpload);
