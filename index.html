@@ -257,18 +257,17 @@
                   <div class="flex items-center justify-between gap-2">
                     <span class="text-[11px] text-slate-400">Режим фона:</span>
                     <select id="detectMode" class="text-[11px] bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 focus:outline-none">
-                      <option value="auto" selected>Авто (по границам и цвету)</option>
+                      <option value="dark" selected>Тёмная на светлом</option>
                       <option value="light">Светлая на тёмном</option>
-                      <option value="dark">Тёмная на светлом</option>
                     </select>
                   </div>
 
                   <div>
                     <div class="flex justify-between text-[11px] mb-0.5">
-                      <span id="threshLabel" class="text-slate-400">Чувствительность границ</span>
-                      <span id="threshVal" class="font-mono text-slate-200">45</span>
+                      <span id="threshLabel" class="text-slate-400">Порог контраста (отсечение теней)</span>
+                      <span id="threshVal" class="font-mono text-slate-200">130</span>
                     </div>
-                    <input type="range" id="threshSlider" min="10" max="220" value="45" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
+                    <input type="range" id="threshSlider" min="10" max="245" value="130" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
                   </div>
 
                   <div>
@@ -1894,44 +1893,17 @@
         const mode = document.getElementById('detectMode').value;
         const sliderVal = parseInt(document.getElementById('threshSlider').value, 10);
 
-        if (mode === 'auto') {
-          let channels = new cv.MatVector();
-          cv.split(src, channels);
-
-          let edgesCombined = cv.Mat.zeros(h, w, cv.CV_8UC1);
-          const lowThresh = Math.max(10, Math.round(sliderVal * 0.6));
-          const highThresh = Math.max(25, Math.round(sliderVal * 1.6));
-
-          for (let c = 0; c < 3; c++) {
-            let ch = channels.get(c);
-            let chBlur = new cv.Mat();
-            let chEdge = new cv.Mat();
-            cv.GaussianBlur(ch, chBlur, new cv.Size(5, 5), 0);
-            cv.Canny(chBlur, chEdge, lowThresh, highThresh);
-            cv.bitwise_or(edgesCombined, chEdge, edgesCombined);
-            ch.delete();
-            chBlur.delete();
-            chEdge.delete();
-          }
-          channels.delete();
-
-          let closeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5));
-          cv.morphologyEx(edgesCombined, mask, cv.MORPH_CLOSE, closeKernel);
-          closeKernel.delete();
-          edgesCombined.delete();
-        } else {
-          let gray = new cv.Mat();
-          let blurred = new cv.Mat();
-          cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-          cv.GaussianBlur(gray, blurred, new cv.Size(3, 3), 0);
-          const threshType = mode === 'dark' ? cv.THRESH_BINARY_INV : cv.THRESH_BINARY;
-          cv.threshold(blurred, mask, sliderVal, 255, threshType);
-          gray.delete();
-          blurred.delete();
-        }
+        let gray = new cv.Mat();
+        let blurred = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+        const threshType = mode === 'dark' ? cv.THRESH_BINARY_INV : cv.THRESH_BINARY;
+        cv.threshold(blurred, mask, sliderVal, 255, threshType);
+        gray.delete();
+        blurred.delete();
 
         const sepPx = parseInt(document.getElementById('sepSlider').value, 10);
-        if (sepPx > 0 && mode !== 'auto') {
+        if (sepPx > 0) {
           const kSize = sepPx * 2 + 1;
           let erodeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(kSize, kSize));
           cv.erode(mask, mask, erodeKernel);
@@ -1974,7 +1946,7 @@
             if (p.y > maxY) maxY = p.y;
           });
 
-          if (sepPx > 0 && mode !== 'auto') {
+          if (sepPx > 0) {
             const cx = (minX + maxX) / 2;
             const cy = (minY + maxY) / 2;
             const halfW = Math.max(1, (maxX - minX) / 2);
@@ -2614,19 +2586,7 @@
         });
       });
 
-      document.getElementById('detectMode').addEventListener('change', (e) => {
-        const threshLabel = document.getElementById('threshLabel');
-        const threshSlider = document.getElementById('threshSlider');
-        const threshVal = document.getElementById('threshVal');
-        if (e.target.value === 'auto') {
-          threshLabel.textContent = 'Чувствительность границ';
-          threshSlider.value = 45;
-          threshVal.textContent = '45';
-        } else {
-          threshLabel.textContent = 'Порог контраста (отсечение теней)';
-          threshSlider.value = 130;
-          threshVal.textContent = '130';
-        }
+      document.getElementById('detectMode').addEventListener('change', () => {
         processPhotoContours();
       });
 
