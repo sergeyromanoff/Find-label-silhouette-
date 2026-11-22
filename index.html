@@ -54,7 +54,7 @@
         </div>
         <div class="flex justify-between items-center mt-2 px-1 text-xs text-slate-500">
           <span id="polyInfo">Точек контура: —</span>
-          <span id="aspectInfo">Пропорция: —</span>
+          <span id="sizePreviewInfo">Габарит: —</span>
         </div>
       </div>
 
@@ -128,7 +128,7 @@
         </div>
       </div>
 
-      <!-- Шаг 4: Реальный размер в мм -->
+      <!-- Шаг 4: Реальный размер в мм (независимый ввод) -->
       <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-3">
         <span class="text-sm font-semibold text-slate-700 block">4. Реальный размер этикетки (мм)</span>
         <div class="grid grid-cols-2 gap-3">
@@ -139,11 +139,11 @@
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Высота (мм)</label>
-            <input type="number" id="heightMm" step="0.1" min="1" placeholder="Авто"
+            <input type="number" id="heightMm" step="0.1" min="1" placeholder="Например, 75"
               class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-base font-semibold focus:outline-none focus:border-blue-500">
           </div>
         </div>
-        <p class="text-[11px] text-slate-400">Введите любой один габарит — второй пересчитается автоматически после выравнивания.</p>
+        <p class="text-[11px] text-slate-400">Задайте точные ширину и высоту — контур впишется ровно в эти габариты.</p>
       </div>
 
       <!-- Шаг 5: Скачивание -->
@@ -162,7 +162,6 @@
     let detectedShapes = [];     // [{ pts, area, bbox }]
     let selectedShapeIdx = 0;    // Индекс выбранной этикетки
     let normalizedPoints = [];   // [{x: 0..1, y: 0..1}]
-    let aspectRatio = 1;         // width / height
     let lastBaseCanvas = null;
 
     const cvStatus = document.getElementById('cvStatus');
@@ -190,7 +189,7 @@
     const widthMmInput = document.getElementById('widthMm');
     const heightMmInput = document.getElementById('heightMm');
     const polyInfo = document.getElementById('polyInfo');
-    const aspectInfo = document.getElementById('aspectInfo');
+    const sizePreviewInfo = document.getElementById('sizePreviewInfo');
     const downloadSvgBtn = document.getElementById('downloadSvgBtn');
 
     function onOpenCvReady() {
@@ -220,7 +219,6 @@
     cameraInput.addEventListener('change', handleImageUpload);
 
     function setRotationAngle(deg) {
-      // Нормализуем в диапазон -180..180
       let norm = ((deg + 180) % 360 + 360) % 360 - 180;
       if (deg === 180) norm = 180;
       rotateSlider.value = norm;
@@ -305,29 +303,18 @@
       return inside;
     }
 
-    widthMmInput.addEventListener('input', () => {
-      const w = parseFloat(widthMmInput.value);
-      if (w > 0 && aspectRatio > 0) {
-        heightMmInput.value = (w / aspectRatio).toFixed(1);
-      } else {
-        heightMmInput.value = '';
-      }
-      updateDownloadButton();
-    });
+    // Независимый ввод ширины и высоты
+    widthMmInput.addEventListener('input', updateSizeAndButton);
+    heightMmInput.addEventListener('input', updateSizeAndButton);
 
-    heightMmInput.addEventListener('input', () => {
-      const h = parseFloat(heightMmInput.value);
-      if (h > 0 && aspectRatio > 0) {
-        widthMmInput.value = (h * aspectRatio).toFixed(1);
-      } else {
-        widthMmInput.value = '';
-      }
-      updateDownloadButton();
-    });
-
-    function updateDownloadButton() {
+    function updateSizeAndButton() {
       const w = parseFloat(widthMmInput.value);
       const h = parseFloat(heightMmInput.value);
+      if (w > 0 && h > 0) {
+        sizePreviewInfo.textContent = `Размер: ${w} × ${h} мм`;
+      } else {
+        sizePreviewInfo.textContent = 'Размер: не задан';
+      }
       downloadSvgBtn.disabled = !(normalizedPoints.length >= 3 && w > 0 && h > 0);
     }
 
@@ -511,8 +498,7 @@
       if (detectedShapes.length === 0) {
         normalizedPoints = [];
         polyInfo.textContent = 'Контур не найден (подвиньте порог)';
-        aspectInfo.textContent = 'Пропорция: —';
-        updateDownloadButton();
+        updateSizeAndButton();
         return;
       }
 
@@ -551,14 +537,12 @@
 
       const boxW = Math.max(1, maxX - minX);
       const boxH = Math.max(1, maxY - minY);
-      aspectRatio = boxW / boxH;
 
       normalizedPoints = rotatedPts.map(p => ({
         x: (p.x - minX) / boxW,
         y: (p.y - minY) / boxH
       }));
 
-      // Если угол не 0, слегка затемняем фон и подрисовываем повёрнутый фрагмент фото под контуром для наглядности
       if (angleDeg !== 0) {
         outCtx.save();
         outCtx.fillStyle = 'rgba(15, 23, 42, 0.45)';
@@ -579,7 +563,7 @@
         outCtx.restore();
       }
 
-      // Габаритная контрольная рамка (горизонталь/вертикаль) для визуального выравнивания
+      // Габаритная контрольная рамка
       outCtx.save();
       outCtx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
       outCtx.setLineDash([5, 5]);
@@ -605,13 +589,7 @@
 
       const foundCountText = detectedShapes.length > 1 ? ` (этикетка ${selectedShapeIdx + 1} из ${detectedShapes.length})` : '';
       polyInfo.textContent = `Точек: ${rotatedPts.length}${foundCountText}`;
-      aspectInfo.textContent = `Пропорция Ш/В: ${aspectRatio.toFixed(2)}`;
-
-      if (parseFloat(widthMmInput.value) > 0) {
-        heightMmInput.value = (parseFloat(widthMmInput.value) / aspectRatio).toFixed(1);
-      }
-
-      updateDownloadButton();
+      updateSizeAndButton();
     }
 
     downloadSvgBtn.addEventListener('click', () => {
