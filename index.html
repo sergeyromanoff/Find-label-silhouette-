@@ -20,7 +20,7 @@
     <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 flex items-center justify-between">
       <div>
         <h1 class="text-lg font-bold text-slate-900 leading-tight">Контур по фото → SVG</h1>
-        <p class="text-xs text-slate-500 mt-0.5">Точный силуэт этикетки (любой цвет и фон) 1:1 в мм</p>
+        <p class="text-xs text-slate-500 mt-0.5">Автопоиск силуэта и разделение близких этикеток</p>
       </div>
       <span id="cvStatus" class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
         Загрузка OpenCV...
@@ -108,10 +108,14 @@
 
         <div class="space-y-1">
           <div class="flex justify-between text-xs">
-            <span class="text-slate-600">Разделение близких этикеток</span>
-            <span id="sepVal" class="font-semibold text-slate-900">2 px</span>
+            <span class="text-slate-600">Авторазделение близких этикеток</span>
+            <span id="sepVal" class="font-semibold text-blue-600">2 px</span>
           </div>
-          <input type="range" id="sepSlider" min="0" max="8" value="2" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          <input type="range" id="sepSlider" min="0" max="10" value="2" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          <div class="flex justify-between text-[10px] text-slate-400">
+            <span>0 px (как есть)</span>
+            <span>Сильнее разорвать стыки →</span>
+          </div>
         </div>
 
         <div class="space-y-1">
@@ -134,7 +138,7 @@
         </div>
       </div>
 
-      <!-- Шаг 4: Реальный размер в мм (независимый ввод) -->
+      <!-- Шаг 4: Реальный размер в мм -->
       <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-sm font-semibold text-slate-700">4. Реальный размер этикетки (мм)</span>
@@ -172,7 +176,7 @@
     let selectedShapeIdx = 0;    // Индекс выбранной этикетки
     let normalizedPoints = [];   // [{x: 0..1, y: 0..1}]
     let lastBaseCanvas = null;
-    let activeStrokeColor = '#ff007f'; // Контрастная ярко-розовая маджента по умолчанию
+    let activeStrokeColor = '#ff007f';
 
     const cvStatus = document.getElementById('cvStatus');
     const fileInput = document.getElementById('fileInput');
@@ -203,7 +207,6 @@
     const sizePreviewInfo = document.getElementById('sizePreviewInfo');
     const downloadSvgBtn = document.getElementById('downloadSvgBtn');
 
-    // Переключение цвета линии предпросмотра
     document.querySelectorAll('.line-color-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         activeStrokeColor = btn.dataset.color;
@@ -405,6 +408,7 @@
       try {
         const mode = detectMode.value;
         const sliderVal = parseInt(threshSlider.value, 10);
+        const sepPx = parseInt(sepSlider.value, 10);
 
         if (mode === 'auto') {
           let channels = new cv.MatVector();
@@ -427,10 +431,27 @@
           }
           channels.delete();
 
-          let closeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5));
+          // Замыкаем контуры этикеток (минимальным ядром 3x3, чтобы не склеить соседей)
+          let closeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3));
           cv.morphologyEx(edgesCombined, mask, cv.MORPH_CLOSE, closeKernel);
           closeKernel.delete();
           edgesCombined.delete();
+
+          // Заполняем внутренности замкнутых контуров, чтобы применить эрозию-разделение в Авто-режиме
+          let filled = cv.Mat.zeros(h, w, cv.CV_8UC1);
+          let fillContours = new cv.MatVector();
+          let fillHier = new cv.Mat();
+          cv.findContours(mask, fillContours, fillHier, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+          for (let i = 0; i < fillContours.size(); i++) {
+            let area = cv.contourArea(fillContours.get(i));
+            if (area > w * h * 0.005) {
+              cv.drawContours(filled, fillContours, i, new cv.Scalar(255), -1);
+            }
+          }
+          fillContours.delete();
+          fillHier.delete();
+          mask.delete();
+          mask = filled;
         } else {
           let gray = new cv.Mat();
           let blurred = new cv.Mat();
@@ -442,8 +463,8 @@
           blurred.delete();
         }
 
-        const sepPx = parseInt(sepSlider.value, 10);
-        if (sepPx > 0 && mode !== 'auto') {
+        // Авторазделение близко стоящих этикеток (работает во всех режимах, включая Авто)
+        if (sepPx > 0) {
           const kSize = sepPx * 2 + 1;
           let erodeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(kSize, kSize));
           cv.erode(mask, mask, erodeKernel);
@@ -490,7 +511,8 @@
             if (p.y > maxY) maxY = p.y;
           });
 
-          if (sepPx > 0 && mode !== 'auto') {
+          // Компенсируем эрозию обратно наружу на sepPx, сохраняя габарит этикетки
+          if (sepPx > 0) {
             const cx = (minX + maxX) / 2;
             const cy = (minY + maxY) / 2;
             const halfW = Math.max(1, (maxX - minX) / 2);
@@ -548,7 +570,6 @@
       ctx.lineCap = 'round';
       if (isDashed) ctx.setLineDash([8, 6]);
 
-      // Слой 1: Контрастная тёмная обводка-подложка (чтобы линия читалась на белом/светлом)
       ctx.strokeStyle = 'rgba(15, 23, 42, 0.9)';
       ctx.lineWidth = lineWidth + Math.max(3, Math.round(lineWidth * 0.65));
       ctx.beginPath();
@@ -559,7 +580,6 @@
       ctx.closePath();
       ctx.stroke();
 
-      // Слой 2: Яркая неоновая основная линия
       ctx.strokeStyle = mainColor;
       ctx.lineWidth = lineWidth;
       ctx.shadowColor = mainColor;
@@ -593,13 +613,11 @@
 
       const baseLineW = Math.max(3.5, Math.round(w / 180));
 
-      // Невыбранные этикетки — яркий голубой пунктир с тёмной подложкой
       detectedShapes.forEach((shape, idx) => {
         if (idx === selectedShapeIdx) return;
         drawHighContrastPath(outCtx, shape.pts, '#00f0ff', Math.max(2.5, baseLineW * 0.7), true);
       });
 
-      // Активная выбранная этикетка + поворот
       const active = detectedShapes[selectedShapeIdx];
       const cx = (active.bbox.minX + active.bbox.maxX) / 2;
       const cy = (active.bbox.minY + active.bbox.maxY) / 2;
@@ -643,9 +661,8 @@
         outCtx.restore();
       }
 
-      // Полупрозрачная заливка внутри активного контура для мгновенной читаемости
       outCtx.save();
-      outCtx.fillStyle = activeStrokeColor + '26'; // ~15% прозрачности
+      outCtx.fillStyle = activeStrokeColor + '26';
       outCtx.beginPath();
       rotatedPts.forEach((p, idx) => {
         if (idx === 0) outCtx.moveTo(p.x, p.y);
@@ -655,7 +672,6 @@
       outCtx.fill();
       outCtx.restore();
 
-      // Габаритная контрольная рамка (бело-жёлтая с тёмной обводкой)
       outCtx.save();
       outCtx.setLineDash([6, 5]);
       outCtx.strokeStyle = 'rgba(15, 23, 42, 0.75)';
@@ -666,7 +682,6 @@
       outCtx.strokeRect(minX, minY, boxW, boxH);
       outCtx.restore();
 
-      // Яркий двухслойный контур активной этикетки
       drawHighContrastPath(outCtx, rotatedPts, activeStrokeColor, baseLineW, false);
 
       const foundCountText = detectedShapes.length > 1 ? ` • этикетка ${selectedShapeIdx + 1} из ${detectedShapes.length}` : '';
