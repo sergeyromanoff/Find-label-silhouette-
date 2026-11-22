@@ -199,6 +199,19 @@
                 <button type="button" data-w="110" data-h="70" class="preset-dim-btn px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-slate-300 transition cursor-pointer">110×70</button>
               </div>
             </div>
+
+            <!-- Ручной запуск раскладки простых фигур (без подвисаний при наборе цифр вроде 1, 10, 100) -->
+            <div class="pt-1 space-y-1.5">
+              <button id="runSimpleNestingBtn" type="button" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition cursor-pointer">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+                <span>Раскидать на лист</span>
+              </button>
+              <div id="simpleNestingDirtyHint" class="hidden text-center text-[11px] text-amber-300 font-medium">
+                Размеры или параметры изменены — нажмите «Раскидать на лист»
+              </div>
+            </div>
           </div>
 
           <!-- БЛОК Б: МОДУЛЬ РАСПОЗНАВАНИЯ КОНТУРОВ И НАБОРОВ ПО ФОТО -->
@@ -624,6 +637,8 @@
       photoLayoutMode: 'set',   // 'set' (сборный набор на 1 лист) | 'separate' (каждая этикетка на отдельный лист)
       activeSeparateTabIdx: 0,  // выбранный лист в режиме 'separate'
       activeResult: null,
+      simpleNestingDirty: false,
+      cachedSimpleResults: { '35x50': null, '50x70': null },
       photoNestingDirty: false,
       cachedPhotoResults: { '35x50': null, '50x70': null },
       zoom: 1,
@@ -1749,74 +1764,53 @@
     // ============================================================================
     // 3. ЕДИНЫЙ ДИСПЕТЧЕР РАСЧЁТА
     // ============================================================================
-    function calculateLayoutForFormat(formatObj) {
-      if (state.shapeType === 'photo') {
-        const cached = state.cachedPhotoResults[formatObj.id];
-        if (cached) {
-          if (cached.isSeparateMode && cached.separateSheets && cached.separateSheets.length > 0) {
-            const tabIdx = Math.min(state.activeSeparateTabIdx, cached.separateSheets.length - 1);
-            const activeSheet = cached.separateSheets[tabIdx];
+    function markSimpleNestingDirty() {
+      state.simpleNestingDirty = true;
+      const hint = document.getElementById('simpleNestingDirtyHint');
+      const btn = document.getElementById('runSimpleNestingBtn');
+      if (hint) hint.classList.remove('hidden');
+      if (btn) btn.classList.add('ring-2', 'ring-amber-400/70');
+      // Обновляем бейдж формы и тираж на закэшированном расчёте без запуска тяжёлой раскладки
+      updateShapeSubTypeBadge();
+      const res35 = calculateLayoutForFormat(SHEET_FORMATS['35x50'], false);
+      const res50 = calculateLayoutForFormat(SHEET_FORMATS['50x70'], false);
+      const activeRes = state.format === '35x50' ? res35 : res50;
+      state.activeResult = activeRes;
+      applyResultToUi(res35, res50, activeRes);
+    }
 
-            // Пересчитываем тираж по каждой отдельной форме с учётом текущего тиража и приладки
-            const updatedSeparate = cached.separateSheets.map(sh => {
-              const targetQty = state.quantity * sh.qtyInSet;
-              const netSheets = sh.count > 0 ? Math.ceil(targetQty / sh.count) : 0;
-              const grossSheets = sh.count > 0 ? netSheets + state.makeready : 0;
-              return { ...sh, targetQty, netSheets, grossSheets };
-            });
-            const cur = updatedSeparate[tabIdx];
-            const sumNetAll = updatedSeparate.reduce((a, b) => a + b.netSheets, 0);
-            const sumGrossAll = updatedSeparate.reduce((a, b) => a + b.grossSheets, 0);
-
-            return {
-              ...cached,
-              separateSheets: updatedSeparate,
-              activeSeparateSheet: cur,
-              items: cur.items,
-              count: cur.count,
-              singlePieceArea: cur.singlePieceArea,
-              zoneUtilPct: cur.zoneUtilPct,
-              sheetUtilPct: cur.sheetUtilPct,
-              netSheets: cur.netSheets,
-              grossSheets: cur.grossSheets,
-              sumNetAllSheets: sumNetAll,
-              sumGrossAllSheets: sumGrossAll,
-              label: state.photoNestingDirty
-                ? `${cur.label} (изменено — пересчитайте)`
-                : cur.label
-            };
-          }
-
-          const netSheets = cached.count > 0 ? Math.ceil(state.quantity / cached.count) : 0;
-          const grossSheets = cached.count > 0 ? netSheets + state.makeready : 0;
-          return {
-            ...cached,
-            netSheets,
-            grossSheets,
-            label: state.photoNestingDirty
-              ? `${cached.label} (изменено — нажмите «Разложить»)`
-              : cached.label
-          };
-        }
-        return {
-          format: formatObj,
-          isPhotoSetMode: true,
-          isSeparateMode: state.photoLayoutMode === 'separate',
-          separateSheets: [],
-          items: [],
-          count: 0,
-          totalPiecesOnSheet: 0,
-          piecesPerSet: 0,
-          label: 'Настройте контуры и нажмите «Разложить»',
-          gainOverGrid: 0,
-          singlePieceArea: 0,
-          zoneUtilPct: 0,
-          sheetUtilPct: 0,
-          netSheets: 0,
-          grossSheets: 0
-        };
+    function runSimpleNestingManual() {
+      const btn = document.getElementById('runSimpleNestingBtn');
+      const hint = document.getElementById('simpleNestingDirtyHint');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9" stroke-dasharray="28" /></svg><span>Выполняется раскладка...</span>`;
       }
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          try {
+            readInputs();
+            state.cachedSimpleResults['35x50'] = computeSimpleLayoutCore(SHEET_FORMATS['35x50']);
+            state.cachedSimpleResults['50x70'] = computeSimpleLayoutCore(SHEET_FORMATS['50x70']);
+            state.simpleNestingDirty = false;
+            if (hint) hint.classList.add('hidden');
+            if (btn) btn.classList.remove('ring-2', 'ring-amber-400/70');
+            recalculateAndRender();
+            const activeRes = state.format === '35x50' ? state.cachedSimpleResults['35x50'] : state.cachedSimpleResults['50x70'];
+            if (activeRes && activeRes.count > 0) {
+              showToast(`Готово: ${activeRes.count} шт. на листе`, 'success');
+            }
+          } finally {
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3" /></svg><span>Раскидать на лист</span>`;
+            }
+          }
+        }, 15);
+      });
+    }
 
+    function computeSimpleLayoutCore(formatObj) {
       const zoneW = formatObj.workW;
       const zoneH = formatObj.workH;
       const w = state.width;
@@ -1900,6 +1894,108 @@
       };
     }
 
+    function calculateLayoutForFormat(formatObj, allowComputeIfMissing = true) {
+      if (state.shapeType === 'photo') {
+        const cached = state.cachedPhotoResults[formatObj.id];
+        if (cached) {
+          if (cached.isSeparateMode && cached.separateSheets && cached.separateSheets.length > 0) {
+            const tabIdx = Math.min(state.activeSeparateTabIdx, cached.separateSheets.length - 1);
+            const activeSheet = cached.separateSheets[tabIdx];
+
+            const updatedSeparate = cached.separateSheets.map(sh => {
+              const targetQty = state.quantity * sh.qtyInSet;
+              const netSheets = sh.count > 0 ? Math.ceil(targetQty / sh.count) : 0;
+              const grossSheets = sh.count > 0 ? netSheets + state.makeready : 0;
+              return { ...sh, targetQty, netSheets, grossSheets };
+            });
+            const cur = updatedSeparate[tabIdx];
+            const sumNetAll = updatedSeparate.reduce((a, b) => a + b.netSheets, 0);
+            const sumGrossAll = updatedSeparate.reduce((a, b) => a + b.grossSheets, 0);
+
+            return {
+              ...cached,
+              separateSheets: updatedSeparate,
+              activeSeparateSheet: cur,
+              items: cur.items,
+              count: cur.count,
+              singlePieceArea: cur.singlePieceArea,
+              zoneUtilPct: cur.zoneUtilPct,
+              sheetUtilPct: cur.sheetUtilPct,
+              netSheets: cur.netSheets,
+              grossSheets: cur.grossSheets,
+              sumNetAllSheets: sumNetAll,
+              sumGrossAllSheets: sumGrossAll,
+              label: state.photoNestingDirty
+                ? `${cur.label} (изменено — пересчитайте)`
+                : cur.label
+            };
+          }
+
+          const netSheets = cached.count > 0 ? Math.ceil(state.quantity / cached.count) : 0;
+          const grossSheets = cached.count > 0 ? netSheets + state.makeready : 0;
+          return {
+            ...cached,
+            netSheets,
+            grossSheets,
+            label: state.photoNestingDirty
+              ? `${cached.label} (изменено — нажмите «Разложить»)`
+              : cached.label
+          };
+        }
+        return {
+          format: formatObj,
+          isPhotoSetMode: true,
+          isSeparateMode: state.photoLayoutMode === 'separate',
+          separateSheets: [],
+          items: [],
+          count: 0,
+          totalPiecesOnSheet: 0,
+          piecesPerSet: 0,
+          label: 'Настройте контуры и нажмите «Разложить»',
+          gainOverGrid: 0,
+          singlePieceArea: 0,
+          zoneUtilPct: 0,
+          sheetUtilPct: 0,
+          netSheets: 0,
+          grossSheets: 0
+        };
+      }
+
+      const cachedSimple = state.cachedSimpleResults[formatObj.id];
+      if (cachedSimple) {
+        const netSheets = cachedSimple.count > 0 ? Math.ceil(state.quantity / cachedSimple.count) : 0;
+        const grossSheets = cachedSimple.count > 0 ? netSheets + state.makeready : 0;
+        return {
+          ...cachedSimple,
+          netSheets,
+          grossSheets,
+          label: state.simpleNestingDirty
+            ? `${cachedSimple.label} (изменено — нажмите «Раскидать»)`
+            : cachedSimple.label
+        };
+      }
+
+      if (!allowComputeIfMissing) {
+        return {
+          format: formatObj,
+          isPhotoSetMode: false,
+          items: [],
+          count: 0,
+          label: 'Нажмите «Раскидать на лист»',
+          gainOverGrid: 0,
+          singlePieceArea: 0,
+          zoneUtilPct: 0,
+          sheetUtilPct: 0,
+          netSheets: 0,
+          grossSheets: 0
+        };
+      }
+
+      const computed = computeSimpleLayoutCore(formatObj);
+      state.cachedSimpleResults[formatObj.id] = computed;
+      return computed;
+    }
+
     // ============================================================================
     // 4. ОБНОВЛЕНИЕ ВСЕГО ИНТЕРФЕЙСА И ОТРИСОВКА ЧЕРТЕЖА
     // ============================================================================
@@ -1912,6 +2008,10 @@
       const activeRes = state.format === '35x50' ? res35 : res50;
       state.activeResult = activeRes;
 
+      applyResultToUi(res35, res50, activeRes);
+    }
+
+    function applyResultToUi(res35, res50, activeRes) {
       const isSep = activeRes.isPhotoSetMode && activeRes.isSeparateMode;
       const isSet = activeRes.isPhotoSetMode && !isSep;
       const unitShort = isSet ? 'наб.' : 'шт.';
@@ -3047,9 +3147,11 @@
         recalculateAndRender();
       });
 
+      document.getElementById('runSimpleNestingBtn').addEventListener('click', runSimpleNestingManual);
+
       document.getElementById('inputPolySides').addEventListener('input', () => {
         syncPolyDimensions('sides');
-        recalculateAndRender();
+        markSimpleNestingDirty();
       });
       document.querySelectorAll('.preset-sides-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -3059,20 +3161,20 @@
           });
           btn.className = 'preset-sides-btn px-2 py-1 rounded bg-amber-500/25 border border-amber-500/50 text-[10px] font-mono text-amber-200 font-bold cursor-pointer';
           syncPolyDimensions('sides');
-          recalculateAndRender();
+          markSimpleNestingDirty();
         });
       });
       document.getElementById('chkPolyProportional').addEventListener('change', (e) => {
         if (e.target.checked) syncPolyDimensions('width');
-        recalculateAndRender();
+        markSimpleNestingDirty();
       });
       document.getElementById('inputWidth').addEventListener('input', () => {
         syncPolyDimensions('width');
-        recalculateAndRender();
+        markSimpleNestingDirty();
       });
       document.getElementById('inputHeight').addEventListener('input', () => {
         syncPolyDimensions('height');
-        recalculateAndRender();
+        markSimpleNestingDirty();
       });
 
       document.getElementById('btnPhotoLayoutSet').addEventListener('click', () => setPhotoLayoutMode('set'));
@@ -3087,14 +3189,14 @@
         const tmp = wEl.value;
         wEl.value = hEl.value;
         hEl.value = tmp;
-        recalculateAndRender();
+        markSimpleNestingDirty();
       });
 
       document.querySelectorAll('.preset-dim-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.getElementById('inputWidth').value = btn.dataset.w;
           document.getElementById('inputHeight').value = btn.dataset.h;
-          recalculateAndRender();
+          runSimpleNestingManual();
         });
       });
 
@@ -3105,11 +3207,17 @@
             b.className = 'preset-gap-btn py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] font-mono text-slate-300 transition cursor-pointer';
           });
           btn.className = 'preset-gap-btn py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/50 text-[11px] font-mono text-purple-200 font-semibold transition cursor-pointer';
-          recalculateAndRender();
+          if (state.shapeType === 'photo') markPhotoNestingDirty();
+          else markSimpleNestingDirty();
         });
       });
 
-      ['inputWidth', 'inputHeight', 'selectMode', 'inputQuantity', 'inputMakeready'].forEach(id => {
+      ['selectMode'].forEach(id => {
+        document.getElementById(id).addEventListener('input', markSimpleNestingDirty);
+        document.getElementById(id).addEventListener('change', markSimpleNestingDirty);
+      });
+
+      ['inputQuantity', 'inputMakeready'].forEach(id => {
         document.getElementById(id).addEventListener('input', recalculateAndRender);
         document.getElementById(id).addEventListener('change', recalculateAndRender);
       });
@@ -3119,7 +3227,7 @@
           if (state.shapeType === 'photo') {
             markPhotoNestingDirty();
           } else {
-            recalculateAndRender();
+            markSimpleNestingDirty();
           }
         };
         document.getElementById(id).addEventListener('input', handler);
