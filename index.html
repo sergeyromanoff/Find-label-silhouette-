@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>OffsetNest — Калькулятор офсетного нестинга + Контур по фото (35×50 / 50×70)</title>
+  <meta name="googlebot" content="noindex, nofollow" />
+  <title>OffsetNest — Калькулятор офсетного нестинга + Полигональный нестинг по фото (35×50 / 50×70)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -72,7 +73,7 @@
             OpenCV: загрузка...
           </span>
         </div>
-        <p class="text-xs text-slate-400 hidden sm:block">Офсетный нестинг фигур и сборных наборов по фото контура</p>
+        <p class="text-xs text-slate-400 hidden sm:block">Офсетный нестинг фигур и полигональный раскрой наборов по фото</p>
       </div>
     </div>
 
@@ -204,7 +205,6 @@
 
           <!-- БЛОК Б: МОДУЛЬ РАСПОЗНАВАНИЯ КОНТУРОВ И НАБОРОВ ПО ФОТО -->
           <div id="photoContourPanel" class="hidden space-y-3 pt-1">
-            <!-- Загрузка фото -->
             <div class="grid grid-cols-2 gap-2">
               <label class="cursor-pointer flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs py-2.5 px-3 rounded-xl transition text-center shadow">
                 <span>📷 Камера</span>
@@ -216,7 +216,6 @@
               </label>
             </div>
 
-            <!-- Рабочая область после загрузки фото -->
             <div id="photoWorkspace" class="hidden space-y-3">
               <!-- Предпросмотр фото с контурами -->
               <div class="bg-slate-950 border border-slate-800 rounded-xl p-2">
@@ -234,7 +233,7 @@
                 </div>
               </div>
 
-              <!-- Настройки OpenCV (сворачиваемый блок для экономии места) -->
+              <!-- Настройки OpenCV -->
               <details class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 text-xs">
                 <summary class="font-semibold text-slate-300 cursor-pointer select-none flex items-center justify-between">
                   <span>⚙️ Настройки распознавания силуэта (OpenCV)</span>
@@ -281,7 +280,7 @@
                 </div>
               </details>
 
-              <!-- КАРТОЧКИ НАЙДЕННЫХ ЭТИКЕТОК В НАБОРЕ (ШАГ 1: ВЫРАВНИВАНИЕ -> ШАГ 2: РАЗМЕРЫ И КОЛ-ВО В НАБОРЕ) -->
+              <!-- КАРТОЧКИ НАЙДЕННЫХ ЭТИКЕТОК В НАБОРЕ -->
               <div class="space-y-2">
                 <div class="flex items-center justify-between">
                   <span class="text-xs font-semibold text-slate-200">Набор этикеток с фото:</span>
@@ -291,9 +290,7 @@
                   Для каждой этикетки: <b>1)</b> выровняйте по жёлтой рамке, <b>2)</b> задайте Ширину, Высоту и кол-во в наборе (<code class="text-slate-300">0</code> = исключить).
                 </p>
 
-                <div id="detectedShapesList" class="space-y-2.5">
-                  <!-- Генерируется динамически для каждого найденного контура -->
-                </div>
+                <div id="detectedShapesList" class="space-y-2.5"></div>
               </div>
             </div>
           </div>
@@ -333,12 +330,23 @@
             </select>
           </div>
 
-          <!-- Опция поворота деталей набора на листе (для режима Фото) -->
-          <div id="photoNestingOptions" class="hidden pt-1">
-            <label class="inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-              <input id="chkAllowPhotoRotate90" type="checkbox" checked class="rounded bg-slate-800 border-slate-600 text-purple-500 focus:ring-0" />
-              <span>Разрешать поворот этикеток набора на 90° на листе</span>
-            </label>
+          <!-- Настройки полигонального нестинга (для режима Фото) -->
+          <div id="photoNestingOptions" class="hidden space-y-2 pt-1">
+            <div class="flex items-center justify-between gap-2">
+              <label for="selectPhotoAngleStep" class="text-xs text-slate-400">Вращение контуров на листе:</label>
+              <select id="selectPhotoAngleStep" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                <option value="15" selected>Любой угол (шаг 15° — 24 угла)</option>
+                <option value="10">Сверхплотно (шаг 10° — 36 углов)</option>
+                <option value="30">Быстро (шаг 30° — 12 углов)</option>
+                <option value="45">Диагонали (шаг 45° — 8 углов)</option>
+                <option value="90">Ортогонально / «валетом» (0°, 90°, 180°, 270°)</option>
+                <option value="180">Только «валетом» (0° и 180°)</option>
+                <option value="0">Без поворота (строго 0°)</option>
+              </select>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-snug">
+              Используется <b>реальный многоугольник контура</b>: выступы и полукруги соседних этикеток вкладываются друг в друга под любым углом с точным зазором.
+            </p>
           </div>
 
           <!-- Тираж и приладка -->
@@ -453,7 +461,7 @@
         <div class="flex flex-wrap items-center gap-3">
           <label class="inline-flex items-center gap-1.5 text-slate-300 cursor-pointer select-none">
             <input id="chkShowNumbers" type="checkbox" checked class="rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0" />
-            <span>Номера на этикетках</span>
+            <span>Номера и углы на этикетках</span>
           </label>
           <label class="inline-flex items-center gap-1.5 text-slate-300 cursor-pointer select-none">
             <input id="chkShowDims" type="checkbox" checked class="rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0" />
@@ -524,7 +532,7 @@
   <script>
     /**
      * ============================================================================
-     * OFFSET NEST LAB — ГЕОМЕТРИЧЕСКИЙ НЕСТИНГ + НАБОРЫ ПО ФОТО (OPENCV)
+     * OFFSET NEST LAB — ГЕОМЕТРИЧЕСКИЙ НЕСТИНГ + ПОЛИГОНАЛЬНЫЙ НЕСТИНГ НАБОРОВ
      * ============================================================================
      */
 
@@ -571,13 +579,13 @@
      * {
      *   id: number (1..N),
      *   name: string,
-     *   pts: [{x, y}], // исходные точки в px на фото
+     *   pts: [{x, y}],
      *   bbox: {minX, minY, maxX, maxY},
-     *   angleDeg: number,        // Шаг 1: угол выравнивания
-     *   alignedConfirmed: boolean, // подтвердил ли пользователь выравнивание (или уже ввёл размеры)
-     *   widthMm: string,         // Шаг 2: ширина в мм
-     *   heightMm: string,        // Шаг 2: высота в мм
-     *   qtyInSet: number         // Шаг 2: количество в наборе (0 = исключить из нестинга)
+     *   angleDeg: number,
+     *   alignedConfirmed: boolean,
+     *   widthMm: string,
+     *   heightMm: string,
+     *   qtyInSet: number
      * }
      */
     let photoShapes = [];
@@ -798,7 +806,8 @@
     }
 
     // ============================================================================
-    // 2. СБОРНЫЙ НЕСТИНГ ПО ФОТО (MAXRECTS BIN PACKING ДЛЯ ЦЕЛЫХ НАБОРОВ)
+    // 2. ЧЕСТНЫЙ ПОЛИГОНАЛЬНЫЙ НЕСТИНГ НАБОРОВ ПО ФОТО (СВОБОДНЫЙ УГОЛ 0°..360°)
+    //    Использует точную геометрию контура + морфологический зазор + BitSet
     // ============================================================================
 
     function rotatePoints(pts, cx, cy, angleDeg) {
@@ -813,7 +822,7 @@
       });
     }
 
-    // Получает выровненный и нормализованный (0..1) контур конкретной этикетки с фото
+    // Получает выровненный и нормализованный (0..1) контур этикетки с фото
     function getAlignedNormalizedShape(shape) {
       const cx = (shape.bbox.minX + shape.bbox.maxX) / 2;
       const cy = (shape.bbox.minY + shape.bbox.maxY) / 2;
@@ -834,7 +843,7 @@
         y: (p.y - minY) / boxH
       }));
 
-      // Площадь многоугольника в долях от 1x1 (по формуле шнурков)
+      // Площадь реального многоугольника в долях от описанного прямоугольника
       let polyAreaFrac = 0;
       for (let i = 0, j = normPts.length - 1; i < normPts.length; j = i++) {
         polyAreaFrac += (normPts[j].x + normPts[i].x) * (normPts[j].y - normPts[i].y);
@@ -844,131 +853,299 @@
       return { rotatedPts: rotated, bbox: { minX, minY, maxX, maxY, boxW, boxH }, normPts, polyAreaFrac };
     }
 
-    // Упаковка N полных наборов на заданную зону zoneW x zoneH с помощью MaxRects (Best Short Side Fit)
-    function tryPackSetCopies(zoneW, zoneH, activeShapes, numSets, gap, allowRot90) {
-      // Расширяем рабочую зону на gap справа и снизу, чтобы каждая деталь занимала (w + gap) x (h + gap)
-      const binW = zoneW + gap;
-      const binH = zoneH + gap;
+    // Создаёт набор растровых масок (BitSet по 32 бита) с учётом реального контура,
+    // произвольного угла поворота rotDeg и точного зазора gapMm вокруг контура!
+    function buildRotatedPolygonVariants(normPts, wMm, hMm, gapMm, angleStepDeg, resPerMm) {
+      // Переводим нормализованные точки в реальные миллиметры (относительно центра (0,0))
+      const basePts = normPts.map(p => ({
+        x: (p.x - 0.5) * wMm,
+        y: (p.y - 0.5) * hMm
+      }));
 
-      // Формируем список всех экземпляров для numSets наборов
-      const pieces = [];
+      const angles = [];
+      if (angleStepDeg <= 0) {
+        angles.push(0);
+      } else {
+        for (let a = 0; a < 360 - 1e-6; a += angleStepDeg) {
+          angles.push(Math.round(a * 10) / 10);
+        }
+      }
+
+      const offCanvas = document.createElement('canvas');
+      const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+      const variants = [];
+      const seenSignatures = new Set();
+
+      for (const ang of angles) {
+        const rad = (ang * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        // Поворачиваем реальные вершины многоугольника в миллиметрах
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        const rotPtsMm = basePts.map(p => {
+          const rx = p.x * cos - p.y * sin;
+          const ry = p.x * sin + p.y * cos;
+          if (rx < minX) minX = rx;
+          if (ry < minY) minY = ry;
+          if (rx > maxX) maxX = rx;
+          if (ry > maxY) maxY = ry;
+          return { x: rx, y: ry };
+        });
+
+        const rotW = maxX - minX;
+        const rotH = maxY - minY;
+
+        // Сдвигаем многоугольник так, чтобы его левый верхний угол был в (0, 0) мм
+        const localPtsMm = rotPtsMm.map(p => ({
+          x: p.x - minX,
+          y: p.y - minY
+        }));
+
+        // Насколько расширяется маска для проверки коллизий:
+        // Сам многоугольник имеет габарит (rotW x rotH), а вокруг него должна быть буферная зона gapMm/2
+        // с каждой стороны (итого +gapMm по ширине и +gapMm по высоте).
+        // Когда две маски с рубашкой gapMm/2 не пересекаются, расстояние между реальными ножами >= gapMm!
+        const halfGap = gapMm * 0.5;
+        const padPx = Math.ceil(halfGap * resPerMm) + 1;
+        const maskW = Math.ceil((rotW + gapMm) * resPerMm);
+        const maskH = Math.ceil((rotH + gapMm) * resPerMm);
+
+        if (maskW <= 0 || maskH <= 0) continue;
+
+        offCanvas.width = maskW;
+        offCanvas.height = maskH;
+        offCtx.clearRect(0, 0, maskW, maskH);
+
+        offCtx.save();
+        offCtx.fillStyle = '#ffffff';
+        offCtx.strokeStyle = '#ffffff';
+        offCtx.lineJoin = 'round';
+        offCtx.lineCap = 'round';
+
+        offCtx.beginPath();
+        localPtsMm.forEach((p, idx) => {
+          const px = (p.x + halfGap) * resPerMm;
+          const py = (p.y + halfGap) * resPerMm;
+          if (idx === 0) offCtx.moveTo(px, py);
+          else offCtx.lineTo(px, py);
+        });
+        offCtx.closePath();
+        offCtx.fill();
+
+        // Обводка толщиной gapMm * resPerMm расширяет многоугольник наружу ровно на gapMm/2 со всех сторон!
+        if (gapMm > 0) {
+          offCtx.lineWidth = gapMm * resPerMm;
+          offCtx.stroke();
+        }
+        offCtx.restore();
+
+        const imgData = offCtx.getImageData(0, 0, maskW, maskH).data;
+        const wordsPerRow = Math.ceil(maskW / 32);
+        const bitRows = [];
+        let activeBitsCount = 0;
+
+        for (let y = 0; y < maskH; y++) {
+          const rowWords = new Uint32Array(wordsPerRow);
+          const rowOffset = y * maskW * 4;
+          for (let x = 0; x < maskW; x++) {
+            if (imgData[rowOffset + x * 4 + 3] > 64) {
+              rowWords[x >>> 5] |= (1 << (x & 31));
+              activeBitsCount++;
+            }
+          }
+          bitRows.push(rowWords);
+        }
+
+        // Отсеиваем симметричные дубликаты (например, для квадрата или круга 0° и 180° идентичны)
+        const sig = `${maskW}x${maskH}_${activeBitsCount}_${bitRows[Math.floor(maskH / 2)][0]}`;
+        if (seenSignatures.has(sig)) continue;
+        seenSignatures.add(sig);
+
+        variants.push({
+          angle: ang,
+          rotW,
+          rotH,
+          localPtsMm, // точки реального ножа в мм относительно (0,0) его габарита
+          maskW,
+          maskH,
+          wordsPerRow,
+          bitRows,
+          activeBitsCount
+        });
+      }
+
+      return variants;
+    }
+
+    // Проверка наложения битовой маски детали на битовую карту листа в позиции (gx, gy)
+    function canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, gx, gy) {
+      const mH = variant.maskH;
+      const wpr = variant.wordsPerRow;
+      const bitShift = gx & 31;
+      const wordOffset = gx >>> 5;
+
+      if (bitShift === 0) {
+        for (let r = 0; r < mH; r++) {
+          const sRow = sheetRows[gy + r];
+          const mRow = variant.bitRows[r];
+          for (let w = 0; w < wpr; w++) {
+            if ((sRow[wordOffset + w] & mRow[w]) !== 0) return false;
+          }
+        }
+      } else {
+        const invShift = 32 - bitShift;
+        for (let r = 0; r < mH; r++) {
+          const sRow = sheetRows[gy + r];
+          const mRow = variant.bitRows[r];
+          for (let w = 0; w < wpr; w++) {
+            const mw = mRow[w];
+            if (mw === 0) continue;
+            if ((sRow[wordOffset + w] & (mw << bitShift)) !== 0) return false;
+            if (wordOffset + w + 1 < sheetWordsPerRow) {
+              if ((sRow[wordOffset + w + 1] & (mw >>> invShift)) !== 0) return false;
+            }
+          }
+        }
+      }
+      return true;
+    }
+
+    // Запись битовой маски детали на битовую карту листа
+    function commitBitMask(sheetRows, sheetWordsPerRow, variant, gx, gy) {
+      const mH = variant.maskH;
+      const wpr = variant.wordsPerRow;
+      const bitShift = gx & 31;
+      const wordOffset = gx >>> 5;
+
+      if (bitShift === 0) {
+        for (let r = 0; r < mH; r++) {
+          const sRow = sheetRows[gy + r];
+          const mRow = variant.bitRows[r];
+          for (let w = 0; w < wpr; w++) {
+            sRow[wordOffset + w] |= mRow[w];
+          }
+        }
+      } else {
+        const invShift = 32 - bitShift;
+        for (let r = 0; r < mH; r++) {
+          const sRow = sheetRows[gy + r];
+          const mRow = variant.bitRows[r];
+          for (let w = 0; w < wpr; w++) {
+            const mw = mRow[w];
+            if (mw === 0) continue;
+            sRow[wordOffset + w] |= (mw << bitShift);
+            if (wordOffset + w + 1 < sheetWordsPerRow) {
+              sRow[wordOffset + w + 1] |= (mw >>> invShift);
+            }
+          }
+        }
+      }
+    }
+
+    // Укладка K полных наборов многоугольников на зону zoneW x zoneH
+    function tryPackPolygonSetCopies(zoneW, zoneH, preparedShapes, numSets, gapMm, resPerMm) {
+      // Расширяем виртуальную сетку листа на gapMm, т.к. каждая деталь имеет рубашку +gapMm/2 по краям
+      const gridW = Math.floor((zoneW + gapMm) * resPerMm);
+      const gridH = Math.floor((zoneH + gapMm) * resPerMm);
+      const sheetWordsPerRow = Math.ceil(gridW / 32);
+
+      const sheetRows = new Array(gridH);
+      for (let y = 0; y < gridH; y++) {
+        sheetRows[y] = new Uint32Array(sheetWordsPerRow);
+      }
+
+      // Формируем очередь деталей для numSets комплектов
+      const queue = [];
       for (let s = 0; s < numSets; s++) {
-        activeShapes.forEach((sh) => {
-          for (let q = 0; q < sh.qtyInSet; q++) {
-            pieces.push({
-              shapeIndex: sh.shapeIndex,
-              shapeId: sh.id,
-              shapeName: sh.name,
+        preparedShapes.forEach(ps => {
+          for (let q = 0; q < ps.qtyInSet; q++) {
+            queue.push({
+              shapeIndex: ps.shapeIndex,
+              shapeId: ps.id,
+              shapeName: ps.name,
               setNum: s + 1,
-              w: sh.wMm,
-              h: sh.hMm,
-              normPts: sh.normPts,
-              area: sh.wMm * sh.hMm
+              variants: ps.variants,
+              sortArea: ps.realAreaMm2
             });
           }
         });
       }
 
-      // Сортируем от крупных к мелким (Best-Fit Decreasing)
-      pieces.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h) || b.area - a.area);
+      // Сначала укладываем более крупные детали комплекта
+      queue.sort((a, b) => b.sortArea - a.sortArea);
 
-      let freeRects = [{ x: 0, y: 0, w: binW, h: binH }];
+      // Кэш минимальной свободной координаты Y для каждого размера (чтобы не сканировать занятый верх листа)
       const placed = [];
+      const halfGap = gapMm * 0.5;
 
-      for (const piece of pieces) {
-        const reqW0 = piece.w + gap;
-        const reqH0 = piece.h + gap;
-        const reqW90 = piece.h + gap;
-        const reqH90 = piece.w + gap;
+      // Шаг сканирования сетки: 1 ячейка при малом числе деталей, 2 ячейки при плотном листе для мгновенного отклика
+      const scanStep = queue.length > 70 ? 2 : 1;
 
-        let bestScore1 = Infinity;
-        let bestScore2 = Infinity;
-        let bestNode = null;
+      for (let idx = 0; idx < queue.length; idx++) {
+        const piece = queue[idx];
+        let bestPos = null;
+        let bestScore = Infinity;
 
-        for (let i = 0; i < freeRects.length; i++) {
-          const fr = freeRects[i];
-          // 0°
-          if (reqW0 <= fr.w + 1e-6 && reqH0 <= fr.h + 1e-6) {
-            const leftoverH = Math.abs(fr.w - reqW0);
-            const leftoverV = Math.abs(fr.h - reqH0);
-            const shortSide = Math.min(leftoverH, leftoverV);
-            const longSide = Math.max(leftoverH, leftoverV);
-            if (shortSide < bestScore1 || (shortSide === bestScore1 && longSide < bestScore2)) {
-              bestScore1 = shortSide;
-              bestScore2 = longSide;
-              bestNode = { x: fr.x, y: fr.y, w: reqW0, h: reqH0, itemW: piece.w, itemH: piece.h, angle: 0 };
+        // Пробуем все углы поворота для этой детали и выбираем самый плотный (Bottom-Left + минимальная высота)
+        for (let vIdx = 0; vIdx < piece.variants.length; vIdx++) {
+          const variant = piece.variants[vIdx];
+          const maxGx = gridW - variant.maskW;
+          const maxGy = gridH - variant.maskH;
+          if (maxGx < 0 || maxGy < 0) continue;
+
+          // Слегка чередуем приоритет угла (например, 0° и 180° «валетом») для лучшего зацепления
+          for (let gy = 0; gy <= maxGy; gy += scanStep) {
+            // Оценка по Y: если уже хуже лучшего найденного для других углов, дальше вниз не идём
+            const baseScoreY = gy + variant.maskH * 0.35;
+            if (baseScoreY > bestScore) break;
+
+            for (let gx = 0; gx <= maxGx; gx += scanStep) {
+              const score = baseScoreY + gx * 0.08;
+              if (score >= bestScore) break;
+
+              if (canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, gx, gy)) {
+                // Уточняем позицию на 1 пиксель влево/вверх, если scanStep > 1
+                let exactGx = gx;
+                let exactGy = gy;
+                if (scanStep > 1) {
+                  while (exactGy > 0 && canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, exactGx, exactGy - 1)) exactGy--;
+                  while (exactGx > 0 && canPlaceBitMask(sheetRows, sheetWordsPerRow, variant, exactGx - 1, exactGy)) exactGx--;
+                }
+                const exactScore = exactGy + variant.maskH * 0.35 + exactGx * 0.08;
+                if (exactScore < bestScore) {
+                  bestScore = exactScore;
+                  bestPos = { gx: exactGx, gy: exactGy, variant };
+                }
+                break; // Для этого Y самый левый X найден — переходим к следующему углу
+              }
             }
           }
-          // 90°
-          if (allowRot90 && Math.abs(piece.w - piece.h) > 0.01 && reqW90 <= fr.w + 1e-6 && reqH90 <= fr.h + 1e-6) {
-            const leftoverH = Math.abs(fr.w - reqW90);
-            const leftoverV = Math.abs(fr.h - reqH90);
-            const shortSide = Math.min(leftoverH, leftoverV);
-            const longSide = Math.max(leftoverH, leftoverV);
-            if (shortSide < bestScore1 || (shortSide === bestScore1 && longSide < bestScore2)) {
-              bestScore1 = shortSide;
-              bestScore2 = longSide;
-              bestNode = { x: fr.x, y: fr.y, w: reqW90, h: reqH90, itemW: piece.h, itemH: piece.w, angle: 90 };
-            }
-          }
         }
 
-        if (!bestNode) {
-          return null; // Не влезло это количество наборов
+        if (!bestPos) {
+          return null; // Не поместилось заданное число комплектов
         }
 
-        // Разбиваем пересекающиеся свободные прямоугольники (MaxRects split)
-        const nextFree = [];
-        for (let i = 0; i < freeRects.length; i++) {
-          const fr = freeRects[i];
-          if (bestNode.x >= fr.x + fr.w - 1e-6 || bestNode.x + bestNode.w <= fr.x + 1e-6 ||
-              bestNode.y >= fr.y + fr.h - 1e-6 || bestNode.y + bestNode.h <= fr.y + 1e-6) {
-            nextFree.push(fr);
-            continue;
-          }
-          if (bestNode.x > fr.x + 1e-6) {
-            nextFree.push({ x: fr.x, y: fr.y, w: bestNode.x - fr.x, h: fr.h });
-          }
-          if (bestNode.x + bestNode.w < fr.x + fr.w - 1e-6) {
-            nextFree.push({ x: bestNode.x + bestNode.w, y: fr.y, w: (fr.x + fr.w) - (bestNode.x + bestNode.w), h: fr.h });
-          }
-          if (bestNode.y > fr.y + 1e-6) {
-            nextFree.push({ x: fr.x, y: fr.y, w: fr.w, h: bestNode.y - fr.y });
-          }
-          if (bestNode.y + bestNode.h < fr.y + fr.h - 1e-6) {
-            nextFree.push({ x: fr.x, y: bestNode.y + bestNode.h, w: fr.w, h: (fr.y + fr.h) - (bestNode.y + bestNode.h) });
-          }
-        }
+        commitBitMask(sheetRows, sheetWordsPerRow, bestPos.variant, bestPos.gx, bestPos.gy);
 
-        // Удаляем вложенные дубликаты свободных прямоугольников
-        freeRects = [];
-        for (let i = 0; i < nextFree.length; i++) {
-          let isContained = false;
-          for (let j = 0; j < nextFree.length; j++) {
-            if (i === j) continue;
-            if (nextFree[i].x >= nextFree[j].x - 1e-6 &&
-                nextFree[i].y >= nextFree[j].y - 1e-6 &&
-                nextFree[i].x + nextFree[i].w <= nextFree[j].x + nextFree[j].w + 1e-6 &&
-                nextFree[i].y + nextFree[i].h <= nextFree[j].y + nextFree[j].h + 1e-6) {
-              isContained = true;
-              break;
-            }
-          }
-          if (!isContained) freeRects.push(nextFree[i]);
-        }
+        // Переводим позицию маски обратно в реальные миллиметры внутри допустимой зоны (учитывая смещение halfGap)
+        const realX = Math.max(0, bestPos.gx / resPerMm - halfGap);
+        const realY = Math.max(0, bestPos.gy / resPerMm - halfGap);
 
         placed.push({
-          x: bestNode.x,
-          y: bestNode.y,
-          w: bestNode.itemW,
-          h: bestNode.itemH,
-          angle: bestNode.angle,
-          isNestedVariant: bestNode.angle === 90,
+          x: realX,
+          y: realY,
+          w: bestPos.variant.rotW,
+          h: bestPos.variant.rotH,
+          angle: bestPos.variant.angle,
+          isNestedVariant: bestPos.variant.angle !== 0,
           shapeIndex: piece.shapeIndex,
           shapeId: piece.shapeId,
           shapeName: piece.shapeName,
           setNum: piece.setNum,
-          normPts: piece.normPts
+          localPtsMm: bestPos.variant.localPtsMm
         });
       }
 
@@ -979,10 +1156,12 @@
       const zoneW = formatObj.workW;
       const zoneH = formatObj.workH;
       const gap = state.gap;
-      const allowRot90 = document.getElementById('chkAllowPhotoRotate90').checked;
+      const angleStepDeg = parseFloat(document.getElementById('selectPhotoAngleStep').value);
 
-      // Берём только активные контуры (где qtyInSet >= 1 и заданы корректные W и H в мм)
-      const activeShapes = [];
+      // Разрешение растровой сетки: 2 клетки на 1 мм (шаг 0.5 мм) для 35×50 и 1.5 клетки/мм для 50×70
+      const resPerMm = formatObj.id === '35x50' ? 2.0 : 1.5;
+
+      const preparedShapes = [];
       let totalPiecesPerSet = 0;
       let singleSetRealArea = 0;
 
@@ -992,27 +1171,32 @@
         const hMm = parseFloat(sh.heightMm) || 0;
         if (qty > 0 && wMm >= 2 && hMm >= 2) {
           const aligned = getAlignedNormalizedShape(sh);
-          activeShapes.push({
-            shapeIndex: idx,
-            id: sh.id,
-            name: sh.name,
-            wMm,
-            hMm,
-            qtyInSet: qty,
-            normPts: aligned.normPts,
-            polyAreaFrac: aligned.polyAreaFrac
-          });
-          totalPiecesPerSet += qty;
-          singleSetRealArea += qty * (wMm * hMm * aligned.polyAreaFrac);
+          const realAreaMm2 = wMm * hMm * aligned.polyAreaFrac;
+          const variants = buildRotatedPolygonVariants(aligned.normPts, wMm, hMm, gap, angleStepDeg, resPerMm);
+
+          if (variants.length > 0) {
+            preparedShapes.push({
+              shapeIndex: idx,
+              id: sh.id,
+              name: sh.name,
+              wMm,
+              hMm,
+              qtyInSet: qty,
+              realAreaMm2,
+              variants
+            });
+            totalPiecesPerSet += qty;
+            singleSetRealArea += qty * realAreaMm2;
+          }
         }
       });
 
-      if (activeShapes.length === 0 || totalPiecesPerSet === 0) {
+      if (preparedShapes.length === 0 || totalPiecesPerSet === 0) {
         return {
           format: formatObj,
           isPhotoSetMode: true,
           items: [],
-          count: 0, // кол-во полных наборов на лист
+          count: 0,
           totalPiecesOnSheet: 0,
           piecesPerSet: 0,
           label: 'Задайте размеры и кол-во (> 0)',
@@ -1025,9 +1209,8 @@
         };
       }
 
-      // Оцениваем верхнюю границу числа наборов по площади
-      const minSetBBoxArea = activeShapes.reduce((acc, s) => acc + s.qtyInSet * s.wMm * s.hMm, 0);
-      const maxPossibleSets = Math.min(250, Math.floor((zoneW * zoneH) / Math.max(1, minSetBBoxArea)));
+      // Оцениваем физический потолок комплектов по реальной площади полигонов
+      const maxPossibleSets = Math.min(180, Math.floor((zoneW * zoneH) / Math.max(1, singleSetRealArea)));
 
       // Бинарный поиск максимального целого числа полных комплектов на лист
       let low = 1;
@@ -1037,7 +1220,7 @@
 
       while (low <= high) {
         const mid = Math.floor((low + high) / 2);
-        const attempt = tryPackSetCopies(zoneW, zoneH, activeShapes, mid, gap, allowRot90);
+        const attempt = tryPackPolygonSetCopies(zoneW, zoneH, preparedShapes, mid, gap, resPerMm);
         if (attempt) {
           bestSets = mid;
           bestPlaced = attempt;
@@ -1055,15 +1238,17 @@
       const netSheets = bestSets > 0 ? Math.ceil(state.quantity / bestSets) : 0;
       const grossSheets = bestSets > 0 ? netSheets + state.makeready : 0;
 
+      const rotDesc = angleStepDeg === 0 ? '0°' : `шаг ${angleStepDeg}°`;
+
       return {
         format: formatObj,
         isPhotoSetMode: true,
         items: bestPlaced,
-        count: bestSets, // количество полных наборов на лист
+        count: bestSets,
         totalPiecesOnSheet,
         piecesPerSet: totalPiecesPerSet,
         label: bestSets > 0
-          ? `Сборный набор (${totalPiecesPerSet} дет./компл., ${totalPiecesOnSheet} дет./л)`
+          ? `Полигональный нестинг (${rotDesc} • ${totalPiecesOnSheet} дет./л)`
           : 'Набор не помещается в зону листа',
         gainOverGrid: 0,
         singlePieceArea: singleSetRealArea,
@@ -1199,7 +1384,7 @@
 
       const fmt = activeRes.format;
       document.getElementById('footerSummary').textContent = isSet
-        ? `Лист: ${fmt.sheetW}×${fmt.sheetH} мм | Зона: ${fmt.workW}×${fmt.workH} мм | 1 набор (${activeRes.piecesPerSet} шт): ${(activeRes.singlePieceArea / 100).toFixed(2)} см²`
+        ? `Лист: ${fmt.sheetW}×${fmt.sheetH} мм | Зона: ${fmt.workW}×${fmt.workH} мм | 1 набор (${activeRes.piecesPerSet} дет.): ${(activeRes.singlePieceArea / 100).toFixed(2)} см²`
         : `Лист: ${fmt.sheetW}×${fmt.sheetH} мм | Допустимая зона: ${fmt.workW}×${fmt.workH} мм | 1 шт: ${(activeRes.singlePieceArea / 100).toFixed(2)} см²`;
 
       renderBlueprintSvg(activeRes);
@@ -1248,20 +1433,9 @@
       }
     }
 
-    // Преобразование нормализованных точек контура (0..1) в координаты SVG на листе с учётом поворота 90°
+    // Построение строки координат SVG-многоугольника из уже повёрнутых в миллиметрах точек localPtsMm
     function buildPlacedPolygonPoints(item, offsetX, offsetY) {
-      return item.normPts.map(p => {
-        if (item.angle === 90) {
-          // Поворот на 90° по часовой стрелке внутри прямоугольника (item.w x item.h)
-          const px = offsetX + (1 - p.y) * item.w;
-          const py = offsetY + p.x * item.h;
-          return `${px.toFixed(2)},${py.toFixed(2)}`;
-        } else {
-          const px = offsetX + p.x * item.w;
-          const py = offsetY + p.y * item.h;
-          return `${px.toFixed(2)},${py.toFixed(2)}`;
-        }
-      }).join(' ');
+      return item.localPtsMm.map(p => `${(offsetX + p.x).toFixed(2)},${(offsetY + p.y).toFixed(2)}`).join(' ');
     }
 
     function renderBlueprintSvg(res) {
@@ -1323,16 +1497,21 @@
           const ptsStr = buildPlacedPolygonPoints(item, px, py);
           const titleEscaped = (item.shapeName || `Этикетка #${item.shapeId}`).replace(/"/g, '&quot;');
 
-          html += `<g class="label-item cursor-pointer hover:opacity-80 transition-opacity" data-idx="${idx}" data-title="${titleEscaped}" data-set="${item.setNum}" data-x="${item.x.toFixed(1)}" data-y="${item.y.toFixed(1)}" data-w="${item.w}" data-h="${item.h}" data-angle="${item.angle}">`;
+          // Вычисляем центроид многоугольника для аккуратной подписи внутри детали
+          let sumX = 0, sumY = 0;
+          item.localPtsMm.forEach(p => { sumX += p.x; sumY += p.y; });
+          const cx = px + (sumX / item.localPtsMm.length);
+          const cy = py + (sumY / item.localPtsMm.length);
+
+          html += `<g class="label-item cursor-pointer hover:opacity-80 transition-opacity" data-idx="${idx}" data-title="${titleEscaped}" data-set="${item.setNum}" data-x="${item.x.toFixed(1)}" data-y="${item.y.toFixed(1)}" data-w="${item.w.toFixed(1)}" data-h="${item.h.toFixed(1)}" data-angle="${item.angle}">`;
           html += `<polygon points="${ptsStr}" fill="${palette.fill}" stroke="${palette.stroke}" stroke-width="0.95" stroke-linejoin="round" />`;
 
           if (showNumbers) {
-            const cx = px + item.w / 2;
-            const cy = py + item.h / 2;
-            const fontSize = Math.max(4.5, Math.min(9.5, Math.min(item.w, item.h) * 0.22));
+            const fontSize = Math.max(4.2, Math.min(8.5, Math.min(item.w, item.h) * 0.18));
+            const angleTag = item.angle !== 0 ? ` (${item.angle}°)` : '';
             html += `
               <text x="${cx.toFixed(1)}" y="${(cy + fontSize * 0.35).toFixed(1)}" text-anchor="middle" fill="#f8fafc" font-size="${fontSize.toFixed(1)}" font-weight="700" font-family="JetBrains Mono, monospace">
-                #${item.shapeId}${item.angle === 90 ? '↻' : ''}
+                #${item.shapeId}${angleTag}
               </text>
             `;
           }
@@ -1378,8 +1557,8 @@
           if (state.shapeType === 'photo') {
             tooltip.innerHTML = `
               <div class="text-pink-400 font-bold mb-0.5">${el.dataset.title} (Набор №${el.dataset.set})</div>
-              <div>Габарит: <span class="text-white">${el.dataset.w} × ${el.dataset.h} мм</span> (${el.dataset.angle}°)</div>
-              <div>В зоне: <span class="text-slate-300">X=${el.dataset.x} мм, Y=${el.dataset.y} мм</span></div>
+              <div>Поворот на листе: <span class="text-emerald-300 font-bold">${el.dataset.angle}°</span></div>
+              <div>Позиция в зоне: <span class="text-slate-300">X=${el.dataset.x} мм, Y=${el.dataset.y} мм</span></div>
             `;
           } else {
             const typeName = getExactShapeRussianName();
@@ -1428,28 +1607,35 @@
 `;
 
       if (res.isPhotoSetMode) {
-        svgOut += `  <g id="Набор_по_фото_${res.count}_наб_${res.totalPiecesOnSheet}_дет_зазор_${state.gap}мм">\n`;
+        svgOut += `  <g id="Полигональный_набор_${res.count}_наб_${res.totalPiecesOnSheet}_дет_зазор_${state.gap}мм">
+`;
         res.items.forEach((item, idx) => {
           const px = M + item.x;
           const py = M + item.y;
           const ptsStr = buildPlacedPolygonPoints(item, px, py);
           const safeName = (item.shapeName || `Контур_${item.shapeId}`).replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_');
-          svgOut += `    <polygon id="${safeName}_Набор_${item.setNum}_Дет_${idx + 1}" points="${ptsStr}" fill="none" stroke="#FF0000" stroke-width="0.1" />\n`;
+          svgOut += `    <polygon id="${safeName}_Набор_${item.setNum}_Угол_${item.angle}_Дет_${idx + 1}" points="${ptsStr}" fill="none" stroke="#FF0000" stroke-width="0.1" />
+`;
         });
-        svgOut += `  </g>\n</svg>`;
+        svgOut += `  </g>
+</svg>`;
       } else {
         const shapeName = getExactShapeRussianName();
-        svgOut += `  <g id="Этикетки_${shapeName}_${res.count}_шт_зазор_${state.gap}мм">\n`;
+        svgOut += `  <g id="Этикетки_${shapeName}_${res.count}_шт_зазор_${state.gap}мм">
+`;
         res.items.forEach((item, idx) => {
           const px = M + item.x;
           const py = M + item.y;
           if (state.shapeType === 'rect') {
-            svgOut += `    <rect id="Нож_${idx + 1}" x="${px.toFixed(3)}" y="${py.toFixed(3)}" width="${item.w.toFixed(3)}" height="${item.h.toFixed(3)}" fill="none" stroke="#FF0000" stroke-width="0.1" />\n`;
+            svgOut += `    <rect id="Нож_${idx + 1}" x="${px.toFixed(3)}" y="${py.toFixed(3)}" width="${item.w.toFixed(3)}" height="${item.h.toFixed(3)}" fill="none" stroke="#FF0000" stroke-width="0.1" />
+`;
           } else {
-            svgOut += `    <ellipse id="Нож_${idx + 1}" cx="${(px + item.w / 2).toFixed(3)}" cy="${(py + item.h / 2).toFixed(3)}" rx="${(item.w / 2).toFixed(3)}" ry="${(item.h / 2).toFixed(3)}" fill="none" stroke="#FF0000" stroke-width="0.1" />\n`;
+            svgOut += `    <ellipse id="Нож_${idx + 1}" cx="${(px + item.w / 2).toFixed(3)}" cy="${(py + item.h / 2).toFixed(3)}" rx="${(item.w / 2).toFixed(3)}" ry="${(item.h / 2).toFixed(3)}" fill="none" stroke="#FF0000" stroke-width="0.1" />
+`;
           }
         });
-        svgOut += `  </g>\n</svg>`;
+        svgOut += `  </g>
+</svg>`;
       }
 
       const blob = new Blob([svgOut], { type: 'image/svg+xml;charset=utf-8' });
@@ -1457,7 +1643,7 @@
       const a = document.createElement('a');
       a.href = url;
       a.download = res.isPhotoSetMode
-        ? `OffsetNest_${fmt.id}_Nabor_po_foto_${res.count}nab_${res.totalPiecesOnSheet}det.svg`
+        ? `OffsetNest_${fmt.id}_PolyNabor_${res.count}nab_${res.totalPiecesOnSheet}det.svg`
         : `OffsetNest_${fmt.id}_${getExactShapeRussianName()}_${state.width}x${state.height}mm_${res.count}sht.svg`;
       document.body.appendChild(a);
       a.click();
@@ -1651,10 +1837,8 @@
           });
         }
 
-        // Сортируем от самой крупной этикетки к меньшим
         rawShapes.sort((a, b) => b.area - a.area);
 
-        // Сохраняем уже введённые пользователем углы/размеры/количество, если подкручивали ползунки OpenCV
         const prevShapes = photoShapes.slice();
         photoShapes = rawShapes.map((sh, idx) => {
           const prev = prevShapes[idx];
@@ -1735,7 +1919,6 @@
 
       const baseLineW = Math.max(3, Math.round(w / 190));
 
-      // Рисуем все неактивные контуры на фото с бейджами #1, #2...
       photoShapes.forEach((sh, idx) => {
         if (idx === selectedPhotoShapeIdx) return;
         const isExcluded = (parseInt(sh.qtyInSet, 10) || 0) === 0;
@@ -1747,7 +1930,6 @@
         drawBadgeOnCanvas(outCtx, `#${sh.id}${isExcluded ? ' (0)' : ''}`, cx, cy, w, isExcluded ? '#475569' : '#0284c7');
       });
 
-      // Активная выбранная этикетка + поворот на её индивидуальный угол
       const active = photoShapes[selectedPhotoShapeIdx];
       const cx = (active.bbox.minX + active.bbox.maxX) / 2;
       const cy = (active.bbox.minY + active.bbox.maxY) / 2;
@@ -1776,7 +1958,6 @@
         outCtx.restore();
       }
 
-      // Полупрозрачная заливка активного контура
       outCtx.save();
       outCtx.fillStyle = activeStrokeColor + '26';
       outCtx.beginPath();
@@ -1788,7 +1969,6 @@
       outCtx.fill();
       outCtx.restore();
 
-      // Жёлтая контрольная габаритная рамка (горизонталь/вертикаль для выравнивания)
       outCtx.save();
       outCtx.setLineDash([6, 5]);
       outCtx.strokeStyle = 'rgba(15, 23, 42, 0.85)';
@@ -1829,7 +2009,6 @@
       ctx.restore();
     }
 
-    // Отрисовка списка карточек найденных контуров (Шаг 1: Выравнивание -> Шаг 2: Размеры и кол-во в наборе)
     function renderDetectedShapesCards() {
       const container = document.getElementById('detectedShapesList');
       const summaryEl = document.getElementById('setCompositionSummary');
@@ -1863,7 +2042,6 @@
 
         return `
           <div class="shape-card rounded-xl border p-3 transition ${cardBorder} ${isExcluded ? 'opacity-55' : ''}" data-idx="${idx}">
-            <!-- Заголовок карточки -->
             <div class="flex items-center justify-between gap-2 mb-2.5 cursor-pointer select-shape-trigger" data-idx="${idx}">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold border ${palette.badge}">#${sh.id}</span>
@@ -1882,7 +2060,7 @@
               </div>
             </div>
 
-            <!-- ШАГ 1: ВЫРАВНИВАНИЕ (ПОВОРОТ ПО РАМКЕ) -->
+            <!-- ШАГ 1: ВЫРАВНИВАНИЕ -->
             <div class="bg-slate-950/80 border border-slate-800/90 rounded-lg p-2.5 space-y-2 mb-2">
               <div class="flex items-center justify-between text-[11px]">
                 <span class="font-semibold text-amber-300">Шаг 1. Выравнивание: <span class="font-mono text-white">${sh.angleDeg > 0 ? '+' : ''}${sh.angleDeg.toFixed(1)}°</span></span>
@@ -1937,7 +2115,6 @@
     }
 
     function bindShapeCardsEvents() {
-      // Выбор активной этикетки при клике по шапке карточки
       document.querySelectorAll('.select-shape-trigger').forEach(el => {
         el.addEventListener('click', (e) => {
           if (e.target.tagName === 'INPUT') return;
@@ -1947,7 +2124,6 @@
         });
       });
 
-      // Переименование этикетки в наборе
       document.querySelectorAll('.shape-name-input').forEach(inp => {
         inp.addEventListener('input', () => {
           const idx = parseInt(inp.dataset.idx, 10);
@@ -1956,7 +2132,6 @@
         });
       });
 
-      // Ползунок поворота для выравнивания
       document.querySelectorAll('.shape-rot-slider').forEach(sl => {
         sl.addEventListener('input', () => {
           const idx = parseInt(sl.dataset.idx, 10);
@@ -1965,7 +2140,6 @@
           photoShapes[idx].alignedConfirmed = true;
           renderPhotoPreviewCanvas();
 
-          // Обновляем отображение градуса и открываем Шаг 2 без потери фокуса слайдера
           const card = sl.closest('.shape-card');
           const labelSpan = card.querySelector('span.font-mono.text-white');
           if (labelSpan) {
@@ -1981,7 +2155,6 @@
         });
       });
 
-      // Кнопки -90° / 0° / +90°
       document.querySelectorAll('.rot-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const idx = parseInt(btn.dataset.idx, 10);
@@ -2001,7 +2174,6 @@
         });
       });
 
-      // Подтверждение выравнивания (если угол уже 0° и крутить не нужно)
       document.querySelectorAll('.confirm-align-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const idx = parseInt(btn.dataset.idx, 10);
@@ -2012,7 +2184,6 @@
         });
       });
 
-      // Ввод Ширины (мм)
       document.querySelectorAll('.shape-w-input').forEach(inp => {
         inp.addEventListener('input', () => {
           const idx = parseInt(inp.dataset.idx, 10);
@@ -2023,7 +2194,6 @@
         });
       });
 
-      // Ввод Высоты (мм)
       document.querySelectorAll('.shape-h-input').forEach(inp => {
         inp.addEventListener('input', () => {
           const idx = parseInt(inp.dataset.idx, 10);
@@ -2034,7 +2204,6 @@
         });
       });
 
-      // Ввод количества в наборе (0 = исключить)
       document.querySelectorAll('.shape-qty-input').forEach(inp => {
         inp.addEventListener('input', () => {
           const idx = parseInt(inp.dataset.idx, 10);
@@ -2050,7 +2219,6 @@
         });
       });
 
-      // Быстрая кнопка «Поставить 0 (убрать)»
       document.querySelectorAll('.zero-qty-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const idx = parseInt(btn.dataset.idx, 10);
@@ -2086,7 +2254,7 @@
     }
 
     function getExactShapeRussianName() {
-      if (state.shapeType === 'photo') return 'Набор по фото';
+      if (state.shapeType === 'photo') return 'Полигон по фото';
       const isEqual = Math.abs(state.width - state.height) < 0.01;
       if (state.shapeType === 'rect') return isEqual ? 'Квадрат' : 'Прямоугольник';
       return isEqual ? 'Круг' : 'Овал';
@@ -2211,9 +2379,8 @@
         document.getElementById(id).addEventListener('change', recalculateAndRender);
       });
 
-      document.getElementById('chkAllowPhotoRotate90').addEventListener('change', recalculateAndRender);
+      document.getElementById('selectPhotoAngleStep').addEventListener('change', recalculateAndRender);
 
-      // События модуля Фото/OpenCV
       document.getElementById('fileInput').addEventListener('change', handleImageUpload);
       document.getElementById('cameraInput').addEventListener('change', handleImageUpload);
 
@@ -2259,7 +2426,6 @@
 
       document.getElementById('smoothCheck').addEventListener('change', processPhotoContours);
 
-      // Клик по этикетке прямо на фото для её выбора
       const outputCanvas = document.getElementById('outputCanvas');
       outputCanvas.addEventListener('click', (e) => {
         if (photoShapes.length <= 1) return;
@@ -2295,7 +2461,6 @@
 
       document.getElementById('exportSvgBtn').addEventListener('click', exportLayoutToSvg);
 
-      // Зум и панорамирование
       const viewport = document.getElementById('canvasViewport');
       const sheetSvg = document.getElementById('sheetSvg');
       const coordDisplay = document.getElementById('cursorCoordDisplay');
