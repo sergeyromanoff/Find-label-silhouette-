@@ -99,23 +99,18 @@
             </span>
           </div>
 
-          <!-- 3 вкладки выбора типа -->
-          <div class="grid grid-cols-3 gap-1.5">
-            <button id="btnShapeRect" type="button" class="flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl border-2 border-emerald-500 bg-emerald-500/10 text-white text-[11px] font-semibold transition cursor-pointer text-center">
+          <!-- 2 главные вкладки: Простые фигуры | Контур по фото -->
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnTabSimple" type="button" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/10 text-white text-xs font-semibold transition cursor-pointer">
               <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <rect x="4" y="6" width="16" height="12" rx="1.5" />
+                <rect x="3" y="4" width="8" height="7" rx="1" />
+                <circle cx="17" cy="7.5" r="3.5" />
+                <polygon points="12,13 18,21 6,21" />
               </svg>
-              <span>Прямоуг. / Квадрат</span>
+              <span>Простые фигуры</span>
             </button>
 
-            <button id="btnShapeOval" type="button" class="flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl border-2 border-slate-700/80 bg-slate-900/70 hover:border-slate-600 text-slate-300 text-[11px] font-semibold transition cursor-pointer text-center">
-              <svg class="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <ellipse cx="12" cy="12" rx="8" ry="6" />
-              </svg>
-              <span>Овал / Круг</span>
-            </button>
-
-            <button id="btnShapePhoto" type="button" class="flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl border-2 border-slate-700/80 bg-slate-900/70 hover:border-slate-600 text-slate-300 text-[11px] font-semibold transition cursor-pointer text-center">
+            <button id="btnTabPhoto" type="button" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 border-slate-700/80 bg-slate-900/70 hover:border-slate-600 text-slate-300 text-xs font-semibold transition cursor-pointer">
               <svg class="w-4 h-4 text-pink-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
@@ -124,8 +119,51 @@
             </button>
           </div>
 
-          <!-- БЛОК А: СТАНДАРТНЫЕ ФИГУРЫ (RECT / OVAL) -->
+          <!-- БЛОК А: ПРОСТЫЕ ФИГУРЫ (ПРЯМОУГОЛЬНИК, ОВАЛ, МНОГОУГОЛЬНИК) -->
           <div id="standardShapePanel" class="space-y-3">
+            <!-- Подвыбор простой фигуры -->
+            <div class="grid grid-cols-3 gap-1.5">
+              <button id="btnSubRect" type="button" class="flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl border border-emerald-500 bg-emerald-500/15 text-white text-[11px] font-semibold transition cursor-pointer text-center">
+                <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <rect x="4" y="6" width="16" height="12" rx="1.5" />
+                </svg>
+                <span>Прямоуг. / Квадр.</span>
+              </button>
+
+              <button id="btnSubOval" type="button" class="flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:border-slate-600 text-slate-300 text-[11px] font-semibold transition cursor-pointer text-center">
+                <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <ellipse cx="12" cy="12" rx="8" ry="6" />
+                </svg>
+                <span>Овал / Круг</span>
+              </button>
+
+              <button id="btnSubPoly" type="button" class="flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:border-slate-600 text-slate-300 text-[11px] font-semibold transition cursor-pointer text-center">
+                <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <polygon points="12 3 20 8.5 17 19 7 19 4 8.5" />
+                </svg>
+                <span>Многоугольник</span>
+              </button>
+            </div>
+
+            <!-- Параметры многоугольника (показываются только при выборе Многоугольника) -->
+            <div id="polySidesPanel" class="hidden bg-slate-900/90 border border-amber-500/30 rounded-xl p-2.5 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <label for="inputPolySides" class="text-xs text-slate-300 font-medium">Число углов (сторон):</label>
+                <div class="flex items-center gap-1.5">
+                  <input id="inputPolySides" type="number" min="3" max="24" step="1" value="6" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono text-white text-center focus:outline-none focus:border-amber-500" />
+                  <div class="flex gap-1">
+                    <button type="button" data-sides="3" class="preset-sides-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer" title="Треугольник">3</button>
+                    <button type="button" data-sides="4" class="preset-sides-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer" title="Ромб">4</button>
+                    <button type="button" data-sides="5" class="preset-sides-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer" title="Пятиугольник">5</button>
+                    <button type="button" data-sides="6" class="preset-sides-btn px-2 py-1 rounded bg-amber-500/25 border border-amber-500/50 text-[10px] font-mono text-amber-200 font-bold cursor-pointer" title="Шестигранник">6</button>
+                    <button type="button" data-sides="8" class="preset-sides-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer" title="Восьмигранник">8</button>
+                  </div>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400 leading-tight">
+                Фигура вписывается в заданные габариты <b>Ширина × Высота (мм)</b>. При равных сторонах получается правильный многоугольник.
+              </p>
+            </div>
             <div class="flex items-end gap-2">
               <div class="flex-1">
                 <label for="inputWidth" class="block text-xs text-slate-400 mb-1">Ширина (мм)</label>
@@ -261,16 +299,37 @@
 
                 <div id="detectedShapesList" class="space-y-2.5"></div>
 
-                <!-- Кнопка ручного запуска полигонального нестинга -->
-                <div class="pt-2 space-y-1.5">
+                <!-- Режим раскладки контуров с фото + чекбокс внешней рамки + кнопка запуска -->
+                <div class="pt-2 space-y-2.5 border-t border-slate-800/90">
+                  <!-- Выбор: общий набор на 1 лист ИЛИ каждая этикетка на свой отдельный лист -->
+                  <div class="space-y-1">
+                    <span class="block text-[11px] font-semibold text-slate-300">Способ раскладки этикеток с фото:</span>
+                    <div class="grid grid-cols-2 gap-1.5">
+                      <button id="btnPhotoLayoutSet" type="button" class="py-2 px-2 rounded-lg border border-pink-500 bg-pink-500/15 text-white text-[11px] font-semibold transition cursor-pointer text-center">
+                        🧩 Сборный набор (на 1 лист)
+                      </button>
+                      <button id="btnPhotoLayoutSeparate" type="button" class="py-2 px-2 rounded-lg border border-slate-700 bg-slate-900 hover:border-slate-600 text-slate-300 text-[11px] font-semibold transition cursor-pointer text-center">
+                        📄 Каждую на отдельный лист
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Чекбокс: раскладка по внешней рамке (без вложения векторов) -->
+                  <label class="flex items-start gap-2 bg-slate-900/90 border border-slate-800 rounded-lg p-2 cursor-pointer select-none">
+                    <input id="chkPhotoBoundingBox" type="checkbox" class="mt-0.5 rounded bg-slate-800 border-slate-600 text-pink-500 focus:ring-0" />
+                    <span class="text-[11px] text-slate-300 leading-snug">
+                      <b>Раскладывать по внешней рамке</b> (без вложения векторов — чтобы фигурные края гарантированно не касались)
+                    </span>
+                  </label>
+
                   <button id="runPhotoNestingBtn" type="button" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition cursor-pointer">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                       <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
-                    <span>Разложить набор на листе</span>
+                    <span id="runPhotoNestingBtnText">Разложить набор на листе</span>
                   </button>
                   <div id="photoNestingDirtyHint" class="hidden text-center text-[11px] text-amber-300 font-medium">
-                    Параметры изменены — нажмите «Разложить набор на листе» для пересчёта
+                    Параметры изменены — нажмите кнопку выше для пересчёта
                   </div>
                 </div>
               </div>
@@ -473,6 +532,15 @@
         </div>
       </div>
 
+      <!-- ПАНЕЛЬ ПЕРЕКЛЮЧЕНИЯ ОТДЕЛЬНЫХ ЛИСТОВ (показывается в режиме "Каждую на отдельный лист") -->
+      <div id="separateSheetsBar" class="hidden px-4 py-2 bg-slate-950/95 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-slate-400 font-medium">Листы по этикеткам:</span>
+          <div id="separateSheetsTabs" class="flex flex-wrap gap-1.5"></div>
+        </div>
+        <span id="separateSheetSubtitle" class="font-mono text-[11px] text-pink-300"></span>
+      </div>
+
       <!-- ИНТЕРАКТИВНЫЙ SVG ХОЛСТ -->
       <div id="canvasViewport" class="flex-1 blueprint-grid relative overflow-hidden flex items-center justify-center cursor-grab select-none min-h-[380px]">
         <div id="panZoomContainer" class="origin-center will-change-transform">
@@ -540,14 +608,17 @@
     ];
 
     const state = {
-      format: '35x50',     // '35x50' | '50x70'
-      shapeType: 'rect',   // 'rect' | 'oval' | 'photo'
-      width: 90,           // мм
-      height: 50,          // мм
-      gap: 3,              // мм
-      mode: 'auto',        // 'auto' | 'grid0' | 'grid90' | 'nesting_only'
-      quantity: 10000,     // шт (или наборов в режиме 'photo')
-      makeready: 150,      // листов
+      format: '35x50',          // '35x50' | '50x70'
+      shapeType: 'rect',        // 'rect' | 'oval' | 'poly' | 'photo'
+      polySides: 6,             // число углов (3..24) для простых многоугольников
+      width: 90,                // мм
+      height: 50,               // мм
+      gap: 3,                   // мм
+      mode: 'auto',             // 'auto' | 'grid0' | 'grid90' | 'nesting_only'
+      quantity: 10000,          // шт (или наборов)
+      makeready: 150,           // листов
+      photoLayoutMode: 'set',   // 'set' (сборный набор на 1 лист) | 'separate' (каждая этикетка на отдельный лист)
+      activeSeparateTabIdx: 0,  // выбранный лист в режиме 'separate'
       activeResult: null,
       photoNestingDirty: false,
       cachedPhotoResults: { '35x50': null, '50x70': null },
@@ -797,6 +868,127 @@
     }
 
     // ============================================================================
+    // 1B. АЛГОРИТМЫ УКЛАДКИ ДЛЯ ПРОСТЫХ МНОГОУГОЛЬНИКОВ (N-УГОЛЬНИКОВ)
+    // ============================================================================
+    function generateRegularPolygonVertices(w, h, sides) {
+      const n = Math.max(3, Math.min(24, parseInt(sides, 10) || 6));
+      const raw = [];
+      // Начальный угол: -PI/2 (вершина вверх) для нечётных и 6-угольника, -PI/4 для 4-угольника (ромб)
+      const startAngle = (n === 4) ? -Math.PI / 2 : -Math.PI / 2;
+      for (let i = 0; i < n; i++) {
+        const ang = startAngle + (2 * Math.PI * i) / n;
+        raw.push({ x: Math.cos(ang), y: Math.sin(ang) });
+      }
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      raw.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      });
+      const bw = Math.max(1e-6, maxX - minX);
+      const bh = Math.max(1e-6, maxY - minY);
+      return raw.map(p => ({
+        x: ((p.x - minX) / bw) * w,
+        y: ((p.y - minY) / bh) * h
+      }));
+    }
+
+    function computePolygonArea(pts) {
+      let area = 0;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        area += (pts[j].x + pts[i].x) * (pts[j].y - pts[i].y);
+      }
+      return Math.abs(area) / 2;
+    }
+
+    function packSimplePolygon(zoneW, zoneH, w, h, sides, gap, mode) {
+      const grid0 = packRectRegularGrid(zoneW, zoneH, w, h, gap, false);
+      const grid90 = packRectRegularGrid(zoneW, zoneH, h, w, gap, true);
+
+      if (mode === 'grid0') return { items: grid0, label: `Сетка 0° (${sides}-угольник)` };
+      if (mode === 'grid90') return { items: grid90, label: `Поворот 90° (${sides}-угольник)` };
+
+      // Для многоугольников (треугольник, ромб, шестигранник и т.д.) проверяем также сотовую/шахматную укладку:
+      // Чётные и нечётные ряды сдвигаются на полшага, а для треугольников (3 угла) нечётные ряды ещё и переворачиваются «валетом» (180°)!
+      const candidates = [
+        { items: grid0, label: `Сетка 0° (${sides}-угольник)` },
+        { items: grid90, label: `Сетка 90° (${sides}-угольник)` }
+      ];
+
+      const orientations = [
+        { itemW: w, itemH: h, baseAng: 0 },
+        { itemW: h, itemH: w, baseAng: 90 }
+      ];
+
+      for (const ori of orientations) {
+        if (ori.itemW > zoneW + 1e-6 || ori.itemH > zoneH + 1e-6) continue;
+
+        // Для треугольника (sides === 3) укладка «валетом» (0° и 180°) с шагом (itemW + gap)/2 по X даёт почти двукратную плотность
+        if (sides === 3) {
+          const halfStepX = (ori.itemW + gap) * 0.5;
+          const pitchY = ori.itemH + gap;
+          const rows = Math.floor((zoneH + gap + 1e-6) / pitchY);
+          const cols = ori.itemW <= zoneW + 1e-6 ? 1 + Math.floor((zoneW - ori.itemW + 1e-6) / halfStepX) : 0;
+          if (rows > 0 && cols > 0) {
+            const triItems = [];
+            for (let r = 0; r < rows; r++) {
+              for (let c = 0; c < cols; c++) {
+                const flip180 = (c % 2 === 1);
+                triItems.push({
+                  x: c * halfStepX,
+                  y: r * pitchY,
+                  w: ori.itemW,
+                  h: ori.itemH,
+                  angle: flip180 ? (ori.baseAng + 180) % 360 : ori.baseAng,
+                  isNestedVariant: flip180
+                });
+              }
+            }
+            candidates.push({ items: triItems, label: `Встречный нестинг треугольников (${ori.baseAng}°/180°)` });
+          }
+        } else {
+          // Сотовый/шахматный сдвиг рядов для ромбов, пяти-, шести-, восьмиугольников
+          const pitchX = ori.itemW + gap;
+          const shiftX = pitchX * 0.5;
+          // Коэффициент сближения рядов по вертикали для N-угольников (для 6-угольника ~0.78, для 4-угольника/ромба ~0.55)
+          const rowFactor = sides === 4 ? 0.56 : (sides === 6 ? 0.78 : 0.86);
+          const pitchY = (ori.itemH + gap) * rowFactor;
+
+          const colsEven = Math.floor((zoneW + gap + 1e-6) / pitchX);
+          const colsOdd = Math.floor((zoneW - shiftX + gap + 1e-6) / pitchX);
+          const rowsHoriz = zoneH >= ori.itemH - 1e-6 ? 1 + Math.floor((zoneH - ori.itemH + 1e-6) / pitchY) : 0;
+
+          if (rowsHoriz > 0 && colsEven > 0) {
+            const hexItems = [];
+            for (let r = 0; r < rowsHoriz; r++) {
+              const isOdd = r % 2 === 1;
+              const cols = isOdd ? colsOdd : colsEven;
+              const offX = isOdd ? shiftX : 0;
+              for (let c = 0; c < cols; c++) {
+                hexItems.push({
+                  x: offX + c * pitchX,
+                  y: r * pitchY,
+                  w: ori.itemW,
+                  h: ori.itemH,
+                  angle: ori.baseAng,
+                  isNestedVariant: isOdd
+                });
+              }
+            }
+            candidates.push({ items: hexItems, label: `Сотовый нестинг ${sides}-угольников (${ori.baseAng}°)` });
+          }
+        }
+      }
+
+      let best = candidates[0];
+      for (const c of candidates) {
+        if (c.items.length > best.items.length) best = c;
+      }
+      return best;
+    }
+
+    // ============================================================================
     // 2. ЧЕСТНЫЙ ПОЛИГОНАЛЬНЫЙ НЕСТИНГ НАБОРОВ ПО ФОТО (СВОБОДНЫЙ УГОЛ 0°..360°)
     //    Использует точную геометрию контура + морфологический зазор + BitSet
     // ============================================================================
@@ -846,7 +1038,7 @@
 
     // Создаёт набор растровых масок (BitSet по 32 бита) с учётом реального контура,
     // произвольного угла поворота rotDeg и точного зазора gapMm вокруг контура!
-    function buildRotatedPolygonVariants(normPts, wMm, hMm, gapMm, angleStepDeg, resPerMm) {
+    function buildRotatedPolygonVariants(normPts, wMm, hMm, gapMm, angleStepDeg, resPerMm, useBoundingBox = false) {
       // Переводим нормализованные точки в реальные миллиметры (относительно центра (0,0))
       const basePts = normPts.map(p => ({
         x: (p.x - 0.5) * wMm,
@@ -915,20 +1107,25 @@
         offCtx.lineJoin = 'round';
         offCtx.lineCap = 'round';
 
-        offCtx.beginPath();
-        localPtsMm.forEach((p, idx) => {
-          const px = (p.x + halfGap) * resPerMm;
-          const py = (p.y + halfGap) * resPerMm;
-          if (idx === 0) offCtx.moveTo(px, py);
-          else offCtx.lineTo(px, py);
-        });
-        offCtx.closePath();
-        offCtx.fill();
+        if (useBoundingBox) {
+          // Режим «по внешней рамке»: блокируем весь габаритный прямоугольник + зазор, чтобы фигурные контуры не входили друг в друга
+          offCtx.fillRect(0, 0, maskW, maskH);
+        } else {
+          offCtx.beginPath();
+          localPtsMm.forEach((p, idx) => {
+            const px = (p.x + halfGap) * resPerMm;
+            const py = (p.y + halfGap) * resPerMm;
+            if (idx === 0) offCtx.moveTo(px, py);
+            else offCtx.lineTo(px, py);
+          });
+          offCtx.closePath();
+          offCtx.fill();
 
-        // Обводка толщиной gapMm * resPerMm расширяет многоугольник наружу ровно на gapMm/2 со всех сторон!
-        if (gapMm > 0) {
-          offCtx.lineWidth = gapMm * resPerMm;
-          offCtx.stroke();
+          // Обводка толщиной gapMm * resPerMm расширяет многоугольник наружу ровно на gapMm/2 со всех сторон!
+          if (gapMm > 0) {
+            offCtx.lineWidth = gapMm * resPerMm;
+            offCtx.stroke();
+          }
         }
         offCtx.restore();
 
@@ -1208,8 +1405,9 @@
       const zoneH = formatObj.workH;
       const gap = state.gap;
       const angleStepDeg = parseFloat(document.getElementById('selectPhotoAngleStep').value);
+      const useBBox = document.getElementById('chkPhotoBoundingBox').checked;
 
-      // Разрешение растровой сетки: 2 клетки на 1 мм (шаг 0.5 мм) для 35×50 и 1.5 клетки/мм для 50×70
+      // Разрешение растровой сетки: 2 клетки на 1 мм для 35×50 и 1.5 клетки/мм для 50×70
       const resPerMm = formatObj.id === '35x50' ? 2.0 : 1.5;
 
       const preparedShapes = [];
@@ -1223,7 +1421,7 @@
         if (qty > 0 && wMm >= 2 && hMm >= 2) {
           const aligned = getAlignedNormalizedShape(sh);
           const realAreaMm2 = wMm * hMm * aligned.polyAreaFrac;
-          const variants = buildRotatedPolygonVariants(aligned.normPts, wMm, hMm, gap, angleStepDeg, resPerMm);
+          const variants = buildRotatedPolygonVariants(aligned.normPts, wMm, hMm, gap, angleStepDeg, resPerMm, useBBox);
 
           if (variants.length > 0) {
             preparedShapes.push({
@@ -1242,10 +1440,15 @@
         }
       });
 
+      const modeTag = useBBox ? 'по рамке' : 'по контуру';
+      const rotDesc = angleStepDeg === 0 ? '0°' : `шаг ${angleStepDeg}°`;
+
       if (preparedShapes.length === 0 || totalPiecesPerSet === 0) {
         return {
           format: formatObj,
           isPhotoSetMode: true,
+          isSeparateMode: state.photoLayoutMode === 'separate',
+          separateSheets: [],
           items: [],
           count: 0,
           totalPiecesOnSheet: 0,
@@ -1260,10 +1463,87 @@
         };
       }
 
-      // Оцениваем физический потолок комплектов по реальной площади полигонов
-      const maxPossibleSets = Math.min(180, Math.floor((zoneW * zoneH) / Math.max(1, singleSetRealArea)));
+      // РЕЖИМ Б: КАЖДУЮ ЭТИКЕТКУ НА СВОЙ ОТДЕЛЬНЫЙ ЛИСТ
+      if (state.photoLayoutMode === 'separate') {
+        const separateSheets = preparedShapes.map(ps => {
+          const singleShapeOnly = [{ ...ps, qtyInSet: 1 }];
+          const effectiveArea = useBBox ? (ps.wMm * ps.hMm) : ps.realAreaMm2;
+          const maxPossible = Math.min(300, Math.floor((zoneW * zoneH) / Math.max(1, effectiveArea)));
 
-      // Бинарный поиск максимального целого числа полных комплектов на лист
+          let low = 1;
+          let high = Math.max(1, maxPossible);
+          let bestCount = 0;
+          let bestPlaced = [];
+
+          while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const attempt = tryPackPolygonSetCopies(zoneW, zoneH, singleShapeOnly, mid, gap, resPerMm);
+            if (attempt) {
+              bestCount = mid;
+              bestPlaced = attempt;
+              low = mid + 1;
+            } else {
+              high = mid - 1;
+            }
+          }
+
+          const totalArea = bestCount * ps.realAreaMm2;
+          const zoneUtilPct = (totalArea / (zoneW * zoneH)) * 100;
+          const sheetUtilPct = (totalArea / (formatObj.sheetW * formatObj.sheetH)) * 100;
+          const targetQty = state.quantity * ps.qtyInSet;
+          const netSheets = bestCount > 0 ? Math.ceil(targetQty / bestCount) : 0;
+          const grossSheets = bestCount > 0 ? netSheets + state.makeready : 0;
+
+          return {
+            shapeIndex: ps.shapeIndex,
+            shapeId: ps.id,
+            shapeName: ps.name,
+            wMm: ps.wMm,
+            hMm: ps.hMm,
+            qtyInSet: ps.qtyInSet,
+            targetQty,
+            items: bestPlaced,
+            count: bestCount,
+            singlePieceArea: ps.realAreaMm2,
+            zoneUtilPct,
+            sheetUtilPct,
+            netSheets,
+            grossSheets,
+            label: bestCount > 0
+              ? `Лист для #${ps.id} (${modeTag}, ${rotDesc})`
+              : `#${ps.id} не помещается в зону`
+          };
+        });
+
+        const totalNetAllSheets = separateSheets.reduce((s, sh) => s + sh.netSheets, 0);
+        const totalGrossAllSheets = separateSheets.reduce((s, sh) => s + sh.grossSheets, 0);
+        const totalPiecesAllSheets = separateSheets.reduce((s, sh) => s + sh.count, 0);
+
+        return {
+          format: formatObj,
+          isPhotoSetMode: true,
+          isSeparateMode: true,
+          separateSheets,
+          items: separateSheets[0]?.items || [],
+          count: totalPiecesAllSheets,
+          totalPiecesOnSheet: totalPiecesAllSheets,
+          piecesPerSet: totalPiecesPerSet,
+          label: `Отдельные листы (${separateSheets.length} форм • ${modeTag})`,
+          gainOverGrid: 0,
+          singlePieceArea: singleSetRealArea,
+          zoneUtilPct: separateSheets[0]?.zoneUtilPct || 0,
+          sheetUtilPct: separateSheets[0]?.sheetUtilPct || 0,
+          netSheets: totalNetAllSheets,
+          grossSheets: totalGrossAllSheets
+        };
+      }
+
+      // РЕЖИМ А: СБОРНЫЙ КОМПЛЕКТ НА ОДИН ЛИСТ
+      const effectiveSetArea = useBBox
+        ? preparedShapes.reduce((acc, s) => acc + s.qtyInSet * s.wMm * s.hMm, 0)
+        : singleSetRealArea;
+      const maxPossibleSets = Math.min(180, Math.floor((zoneW * zoneH) / Math.max(1, effectiveSetArea)));
+
       let low = 1;
       let high = Math.max(1, maxPossibleSets);
       let bestSets = 0;
@@ -1289,17 +1569,17 @@
       const netSheets = bestSets > 0 ? Math.ceil(state.quantity / bestSets) : 0;
       const grossSheets = bestSets > 0 ? netSheets + state.makeready : 0;
 
-      const rotDesc = angleStepDeg === 0 ? '0°' : `шаг ${angleStepDeg}°`;
-
       return {
         format: formatObj,
         isPhotoSetMode: true,
+        isSeparateMode: false,
+        separateSheets: [],
         items: bestPlaced,
         count: bestSets,
         totalPiecesOnSheet,
         piecesPerSet: totalPiecesPerSet,
         label: bestSets > 0
-          ? `Полигональный нестинг (${rotDesc} • ${totalPiecesOnSheet} дет./л)`
+          ? `Сборный набор (${modeTag}, ${rotDesc} • ${totalPiecesOnSheet} дет./л)`
           : 'Набор не помещается в зону листа',
         gainOverGrid: 0,
         singlePieceArea: singleSetRealArea,
@@ -1346,7 +1626,8 @@
           } finally {
             if (btn) {
               btn.disabled = false;
-              btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3" /></svg><span>Разложить набор на листе</span>`;
+              const lbl = state.photoLayoutMode === 'separate' ? 'Разложить каждую этикетку на свой лист' : 'Разложить набор на листе';
+              btn.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3" /></svg><span id="runPhotoNestingBtnText">${lbl}</span>`;
             }
           }
         }, 20);
@@ -1360,7 +1641,40 @@
       if (state.shapeType === 'photo') {
         const cached = state.cachedPhotoResults[formatObj.id];
         if (cached) {
-          // Обновляем только расчёт тиража (листы нетто/брутто), если изменился тираж или приладка — это мгновенно
+          if (cached.isSeparateMode && cached.separateSheets && cached.separateSheets.length > 0) {
+            const tabIdx = Math.min(state.activeSeparateTabIdx, cached.separateSheets.length - 1);
+            const activeSheet = cached.separateSheets[tabIdx];
+
+            // Пересчитываем тираж по каждой отдельной форме с учётом текущего тиража и приладки
+            const updatedSeparate = cached.separateSheets.map(sh => {
+              const targetQty = state.quantity * sh.qtyInSet;
+              const netSheets = sh.count > 0 ? Math.ceil(targetQty / sh.count) : 0;
+              const grossSheets = sh.count > 0 ? netSheets + state.makeready : 0;
+              return { ...sh, targetQty, netSheets, grossSheets };
+            });
+            const cur = updatedSeparate[tabIdx];
+            const sumNetAll = updatedSeparate.reduce((a, b) => a + b.netSheets, 0);
+            const sumGrossAll = updatedSeparate.reduce((a, b) => a + b.grossSheets, 0);
+
+            return {
+              ...cached,
+              separateSheets: updatedSeparate,
+              activeSeparateSheet: cur,
+              items: cur.items,
+              count: cur.count,
+              singlePieceArea: cur.singlePieceArea,
+              zoneUtilPct: cur.zoneUtilPct,
+              sheetUtilPct: cur.sheetUtilPct,
+              netSheets: cur.netSheets,
+              grossSheets: cur.grossSheets,
+              sumNetAllSheets: sumNetAll,
+              sumGrossAllSheets: sumGrossAll,
+              label: state.photoNestingDirty
+                ? `${cur.label} (изменено — пересчитайте)`
+                : cur.label
+            };
+          }
+
           const netSheets = cached.count > 0 ? Math.ceil(state.quantity / cached.count) : 0;
           const grossSheets = cached.count > 0 ? netSheets + state.makeready : 0;
           return {
@@ -1375,11 +1689,13 @@
         return {
           format: formatObj,
           isPhotoSetMode: true,
+          isSeparateMode: state.photoLayoutMode === 'separate',
+          separateSheets: [],
           items: [],
           count: 0,
           totalPiecesOnSheet: 0,
           piecesPerSet: 0,
-          label: 'Настройте контуры и нажмите «Разложить набор на листе»',
+          label: 'Настройте контуры и нажмите «Разложить»',
           gainOverGrid: 0,
           singlePieceArea: 0,
           zoneUtilPct: 0,
@@ -1402,7 +1718,11 @@
       let chosenItems = [];
       let chosenLabel = '';
 
-      if (state.mode === 'grid0') {
+      if (state.shapeType === 'poly') {
+        const res = packSimplePolygon(zoneW, zoneH, w, h, state.polySides, gap, state.mode);
+        chosenItems = res.items;
+        chosenLabel = res.label;
+      } else if (state.mode === 'grid0') {
         chosenItems = grid0Items;
         chosenLabel = 'Обычная сетка 0°';
       } else if (state.mode === 'grid90') {
@@ -1438,7 +1758,15 @@
 
       const count = chosenItems.length;
       const gainOverGrid = Math.max(0, count - bestGridCount);
-      const singlePieceArea = state.shapeType === 'rect' ? w * h : Math.PI * (w / 2) * (h / 2);
+      let singlePieceArea = 0;
+      if (state.shapeType === 'rect') {
+        singlePieceArea = w * h;
+      } else if (state.shapeType === 'oval') {
+        singlePieceArea = Math.PI * (w / 2) * (h / 2);
+      } else {
+        const polyVerts = generateRegularPolygonVertices(w, h, state.polySides);
+        singlePieceArea = computePolygonArea(polyVerts);
+      }
       const totalPiecesArea = singlePieceArea * count;
       const zoneUtilPct = (totalPiecesArea / (zoneW * zoneH)) * 100;
       const sheetUtilPct = (totalPiecesArea / (formatObj.sheetW * formatObj.sheetH)) * 100;
@@ -1472,11 +1800,18 @@
       const activeRes = state.format === '35x50' ? res35 : res50;
       state.activeResult = activeRes;
 
-      const isSet = activeRes.isPhotoSetMode;
+      const isSep = activeRes.isPhotoSetMode && activeRes.isSeparateMode;
+      const isSet = activeRes.isPhotoSetMode && !isSep;
       const unitShort = isSet ? 'наб.' : 'шт.';
       const unitPerSheet = isSet ? 'наб/л' : 'шт/л';
 
-      document.getElementById('kpiTitleCount').textContent = isSet ? 'Наборов на листе' : 'На одном листе';
+      renderSeparateSheetsBar(activeRes);
+
+      document.getElementById('kpiTitleCount').textContent = isSet
+        ? 'Наборов на листе'
+        : isSep && activeRes.activeSeparateSheet
+          ? `На листе (#${activeRes.activeSeparateSheet.shapeId})`
+          : 'На одном листе';
       document.getElementById('kpiUnitLabel').textContent = unitShort;
       document.getElementById('kpiCount').textContent = activeRes.count;
       document.getElementById('kpiStrategyName').textContent = activeRes.label;
@@ -1484,6 +1819,9 @@
       const gainBadge = document.getElementById('kpiGainBadge');
       if (isSet) {
         gainBadge.textContent = `${activeRes.totalPiecesOnSheet} дет./лист`;
+        gainBadge.className = 'px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30 font-mono text-[10px] font-semibold';
+      } else if (isSep && activeRes.separateSheets && activeRes.separateSheets.length > 0) {
+        gainBadge.textContent = `Всего ${activeRes.separateSheets.length} отд. форм`;
         gainBadge.className = 'px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30 font-mono text-[10px] font-semibold';
       } else if (activeRes.gainOverGrid > 0) {
         gainBadge.textContent = `+${activeRes.gainOverGrid} шт. от нестинга`;
@@ -1497,10 +1835,14 @@
       document.getElementById('kpiSheetUtil').textContent = `От всего листа: ${activeRes.sheetUtilPct.toFixed(1)}%`;
 
       document.getElementById('kpiNetSheets').textContent = activeRes.netSheets.toLocaleString('ru-RU');
-      document.getElementById('kpiTotalProduced').textContent = `Выход: ${(activeRes.netSheets * activeRes.count).toLocaleString('ru-RU')} ${unitShort}`;
+      document.getElementById('kpiTotalProduced').textContent = isSep && activeRes.sumNetAllSheets
+        ? `Все формы нетто: ${activeRes.sumNetAllSheets.toLocaleString('ru-RU')} л.`
+        : `Выход: ${(activeRes.netSheets * activeRes.count).toLocaleString('ru-RU')} ${unitShort}`;
 
       document.getElementById('kpiGrossSheets').textContent = activeRes.grossSheets.toLocaleString('ru-RU');
-      document.getElementById('kpiMakereadyInfo').textContent = `Приладка: ${state.makeready} л.`;
+      document.getElementById('kpiMakereadyInfo').textContent = isSep && activeRes.sumGrossAllSheets
+        ? `Все формы брутто: ${activeRes.sumGrossAllSheets.toLocaleString('ru-RU')} л.`
+        : `Приладка: ${state.makeready} л.`;
 
       updateLiveComparisonCard(res35, res50, unitPerSheet, unitShort);
 
@@ -1512,16 +1854,52 @@
       renderBlueprintSvg(activeRes);
     }
 
+    function renderSeparateSheetsBar(activeRes) {
+      const bar = document.getElementById('separateSheetsBar');
+      const tabsEl = document.getElementById('separateSheetsTabs');
+      const subEl = document.getElementById('separateSheetSubtitle');
+      if (!bar) return;
+
+      if (!activeRes.isPhotoSetMode || !activeRes.isSeparateMode || !activeRes.separateSheets || activeRes.separateSheets.length === 0) {
+        bar.classList.add('hidden');
+        return;
+      }
+
+      bar.classList.remove('hidden');
+      const curIdx = Math.min(state.activeSeparateTabIdx, activeRes.separateSheets.length - 1);
+      const cur = activeRes.separateSheets[curIdx];
+
+      tabsEl.innerHTML = activeRes.separateSheets.map((sh, idx) => {
+        const isSel = idx === curIdx;
+        const cls = isSel
+          ? 'bg-pink-600 text-white border-pink-400 shadow'
+          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700';
+        return `<button type="button" data-tab-idx="${idx}" class="sep-sheet-tab-btn px-2.5 py-1 rounded-lg border text-[11px] font-mono font-bold transition cursor-pointer ${cls}">Лист #${sh.shapeId}: ${sh.shapeName} (${sh.count} шт/л)</button>`;
+      }).join('');
+
+      document.querySelectorAll('.sep-sheet-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activeSeparateTabIdx = parseInt(btn.dataset.tabIdx, 10);
+          recalculateAndRender();
+        });
+      });
+
+      subEl.textContent = `${cur.wMm}×${cur.hMm} мм • Тираж формы: ${cur.targetQty.toLocaleString('ru-RU')} шт. (${cur.netSheets} л. нетто)`;
+    }
+
     function updateLiveComparisonCard(res35, res50, unitPerSheet, unitShort) {
+      const s35 = (res35.isSeparateMode && res35.sumNetAllSheets) ? res35.sumNetAllSheets : res35.netSheets;
+      const s50 = (res50.isSeparateMode && res50.sumNetAllSheets) ? res50.sumNetAllSheets : res50.netSheets;
+
       document.getElementById('liveCount35').textContent = res35.count;
       document.getElementById('liveUnit35').textContent = unitPerSheet;
       document.getElementById('liveUtil35').textContent = `${res35.zoneUtilPct.toFixed(1)}%`;
-      document.getElementById('liveSheets35').textContent = res35.netSheets.toLocaleString('ru-RU');
+      document.getElementById('liveSheets35').textContent = s35.toLocaleString('ru-RU');
 
       document.getElementById('liveCount50').textContent = res50.count;
       document.getElementById('liveUnit50').textContent = unitPerSheet;
       document.getElementById('liveUtil50').textContent = `${res50.zoneUtilPct.toFixed(1)}%`;
-      document.getElementById('liveSheets50').textContent = res50.netSheets.toLocaleString('ru-RU');
+      document.getElementById('liveSheets50').textContent = s50.toLocaleString('ru-RU');
 
       const card35 = document.getElementById('liveCard35');
       const card50 = document.getElementById('liveCard50');
@@ -1646,10 +2024,19 @@
 
           if (state.shapeType === 'rect') {
             html += `<rect x="${px.toFixed(2)}" y="${py.toFixed(2)}" width="${item.w.toFixed(2)}" height="${item.h.toFixed(2)}" fill="${fillCol}" stroke="${strokeCol}" stroke-width="0.85" />`;
-          } else {
+          } else if (state.shapeType === 'oval') {
             const cx = px + item.w / 2;
             const cy = py + item.h / 2;
             html += `<ellipse cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" rx="${(item.w / 2).toFixed(2)}" ry="${(item.h / 2).toFixed(2)}" fill="${fillCol}" stroke="${strokeCol}" stroke-width="0.85" />`;
+          } else if (state.shapeType === 'poly') {
+            const baseVerts = generateRegularPolygonVertices(state.width, state.height, state.polySides);
+            const cxLocal = state.width / 2;
+            const cyLocal = state.height / 2;
+            const rotVerts = rotatePoints(baseVerts, cxLocal, cyLocal, item.angle || 0);
+            let minRx = Infinity, minRy = Infinity;
+            rotVerts.forEach(p => { if (p.x < minRx) minRx = p.x; if (p.y < minRy) minRy = p.y; });
+            const ptsStr = rotVerts.map(p => `${(px + (p.x - minRx)).toFixed(2)},${(py + (p.y - minRy)).toFixed(2)}`).join(' ');
+            html += `<polygon points="${ptsStr}" fill="${fillCol}" stroke="${strokeCol}" stroke-width="0.85" stroke-linejoin="round" />`;
           }
 
           if (showNumbers) {
@@ -1729,7 +2116,10 @@
 `;
 
       if (res.isPhotoSetMode) {
-        svgOut += `  <g id="Полигональный_набор_${res.count}_наб_${res.totalPiecesOnSheet}_дет_зазор_${state.gap}мм">
+        const groupTitle = res.isSeparateMode && res.activeSeparateSheet
+          ? `Отдельный_лист_${res.activeSeparateSheet.shapeName}_${res.count}_шт_зазор_${state.gap}мм`
+          : `Полигональный_набор_${res.count}_наб_${res.totalPiecesOnSheet}_дет_зазор_${state.gap}мм`;
+        svgOut += `  <g id="${groupTitle.replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_')}">
 `;
         res.items.forEach((item, idx) => {
           const px = M + item.x;
@@ -1745,14 +2135,24 @@
         const shapeName = getExactShapeRussianName();
         svgOut += `  <g id="Этикетки_${shapeName}_${res.count}_шт_зазор_${state.gap}мм">
 `;
+        const basePolyVerts = state.shapeType === 'poly'
+          ? generateRegularPolygonVertices(state.width, state.height, state.polySides)
+          : null;
         res.items.forEach((item, idx) => {
           const px = M + item.x;
           const py = M + item.y;
           if (state.shapeType === 'rect') {
             svgOut += `    <rect id="Нож_${idx + 1}" x="${px.toFixed(3)}" y="${py.toFixed(3)}" width="${item.w.toFixed(3)}" height="${item.h.toFixed(3)}" fill="none" stroke="#FF0000" stroke-width="0.1" />
 `;
-          } else {
+          } else if (state.shapeType === 'oval') {
             svgOut += `    <ellipse id="Нож_${idx + 1}" cx="${(px + item.w / 2).toFixed(3)}" cy="${(py + item.h / 2).toFixed(3)}" rx="${(item.w / 2).toFixed(3)}" ry="${(item.h / 2).toFixed(3)}" fill="none" stroke="#FF0000" stroke-width="0.1" />
+`;
+          } else {
+            const rotVerts = rotatePoints(basePolyVerts, state.width / 2, state.height / 2, item.angle || 0);
+            let minRx = Infinity, minRy = Infinity;
+            rotVerts.forEach(p => { if (p.x < minRx) minRx = p.x; if (p.y < minRy) minRy = p.y; });
+            const ptsStr = rotVerts.map(p => `${(px + (p.x - minRx)).toFixed(3)},${(py + (p.y - minRy)).toFixed(3)}`).join(' ');
+            svgOut += `    <polygon id="Нож_${idx + 1}" points="${ptsStr}" fill="none" stroke="#FF0000" stroke-width="0.1" />
 `;
           }
         });
@@ -1764,9 +2164,14 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = res.isPhotoSetMode
-        ? `OffsetNest_${fmt.id}_PolyNabor_${res.count}nab_${res.totalPiecesOnSheet}det.svg`
-        : `OffsetNest_${fmt.id}_${getExactShapeRussianName()}_${state.width}x${state.height}mm_${res.count}sht.svg`;
+      if (res.isPhotoSetMode && res.isSeparateMode && res.activeSeparateSheet) {
+        const s = res.activeSeparateSheet;
+        a.download = `OffsetNest_${fmt.id}_List_${s.shapeId}_${s.wMm}x${s.hMm}mm_${s.count}sht.svg`;
+      } else if (res.isPhotoSetMode) {
+        a.download = `OffsetNest_${fmt.id}_PolyNabor_${res.count}nab_${res.totalPiecesOnSheet}det.svg`;
+      } else {
+        a.download = `OffsetNest_${fmt.id}_${getExactShapeRussianName()}_${state.width}x${state.height}mm_${res.count}sht.svg`;
+      }
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -2371,6 +2776,7 @@
     function readInputs() {
       state.width = Math.max(5, Math.min(680, parseFloat(document.getElementById('inputWidth').value) || 90));
       state.height = Math.max(5, Math.min(680, parseFloat(document.getElementById('inputHeight').value) || 50));
+      state.polySides = Math.max(3, Math.min(24, parseInt(document.getElementById('inputPolySides').value, 10) || 6));
       state.gap = Math.max(0, Math.min(30, parseFloat(document.getElementById('inputGap').value) || 0));
       state.mode = document.getElementById('selectMode').value;
       state.quantity = Math.max(1, parseInt(document.getElementById('inputQuantity').value, 10) || 10000);
@@ -2378,10 +2784,15 @@
     }
 
     function getExactShapeRussianName() {
-      if (state.shapeType === 'photo') return 'Полигон по фото';
+      if (state.shapeType === 'photo') return 'Контур по фото';
       const isEqual = Math.abs(state.width - state.height) < 0.01;
       if (state.shapeType === 'rect') return isEqual ? 'Квадрат' : 'Прямоугольник';
-      return isEqual ? 'Круг' : 'Овал';
+      if (state.shapeType === 'oval') return isEqual ? 'Круг' : 'Овал';
+      const n = state.polySides;
+      if (n === 3) return 'Треугольник';
+      if (n === 4) return 'Ромб (4-угольник)';
+      if (n === 6) return 'Шестигранник';
+      return `${n}-угольник`;
     }
 
     function updateShapeSubTypeBadge() {
@@ -2395,19 +2806,28 @@
 
     function setShapeType(type) {
       state.shapeType = type;
-      const bRect = document.getElementById('btnShapeRect');
-      const bOval = document.getElementById('btnShapeOval');
-      const bPhoto = document.getElementById('btnShapePhoto');
-
-      const activeCls = 'flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl border-2 border-emerald-500 bg-emerald-500/10 text-white text-[11px] font-semibold transition cursor-pointer text-center';
-      const activePhotoCls = 'flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl border-2 border-pink-500 bg-pink-500/10 text-white text-[11px] font-semibold transition cursor-pointer text-center';
-      const inactiveCls = 'flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-xl border-2 border-slate-700/80 bg-slate-900/70 hover:border-slate-600 text-slate-300 text-[11px] font-semibold transition cursor-pointer text-center';
-
-      bRect.className = type === 'rect' ? activeCls : inactiveCls;
-      bOval.className = type === 'oval' ? activeCls : inactiveCls;
-      bPhoto.className = type === 'photo' ? activePhotoCls : inactiveCls;
-
       const isPhoto = type === 'photo';
+
+      const bTabSimple = document.getElementById('btnTabSimple');
+      const bTabPhoto = document.getElementById('btnTabPhoto');
+      const tabActiveSimple = 'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/10 text-white text-xs font-semibold transition cursor-pointer';
+      const tabActivePhoto = 'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 border-pink-500 bg-pink-500/10 text-white text-xs font-semibold transition cursor-pointer';
+      const tabInactive = 'flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 border-slate-700/80 bg-slate-900/70 hover:border-slate-600 text-slate-300 text-xs font-semibold transition cursor-pointer';
+
+      bTabSimple.className = !isPhoto ? tabActiveSimple : tabInactive;
+      bTabPhoto.className = isPhoto ? tabActivePhoto : tabInactive;
+
+      const bRect = document.getElementById('btnSubRect');
+      const bOval = document.getElementById('btnSubOval');
+      const bPoly = document.getElementById('btnSubPoly');
+      const subActive = 'flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl border border-emerald-500 bg-emerald-500/15 text-white text-[11px] font-semibold transition cursor-pointer text-center';
+      const subInactive = 'flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:border-slate-600 text-slate-300 text-[11px] font-semibold transition cursor-pointer text-center';
+
+      bRect.className = type === 'rect' ? subActive : subInactive;
+      bOval.className = type === 'oval' ? subActive : subInactive;
+      bPoly.className = type === 'poly' ? subActive : subInactive;
+
+      document.getElementById('polySidesPanel').classList.toggle('hidden', type !== 'poly');
       document.getElementById('standardShapePanel').classList.toggle('hidden', isPhoto);
       document.getElementById('photoContourPanel').classList.toggle('hidden', !isPhoto);
       document.getElementById('standardModeWrapper').classList.toggle('hidden', isPhoto);
@@ -2415,6 +2835,26 @@
       document.getElementById('labelQuantity').textContent = isPhoto ? 'Тираж наборов (компл.)' : 'Тираж этикеток (шт.)';
 
       recalculateAndRender();
+    }
+
+    function setPhotoLayoutMode(mode) {
+      state.photoLayoutMode = mode;
+      state.activeSeparateTabIdx = 0;
+      const bSet = document.getElementById('btnPhotoLayoutSet');
+      const bSep = document.getElementById('btnPhotoLayoutSeparate');
+      const btnText = document.getElementById('runPhotoNestingBtnText');
+
+      const activeCls = 'py-2 px-2 rounded-lg border border-pink-500 bg-pink-500/15 text-white text-[11px] font-semibold transition cursor-pointer text-center';
+      const inactiveCls = 'py-2 px-2 rounded-lg border border-slate-700 bg-slate-900 hover:border-slate-600 text-slate-300 text-[11px] font-semibold transition cursor-pointer text-center';
+
+      bSet.className = mode === 'set' ? activeCls : inactiveCls;
+      bSep.className = mode === 'separate' ? activeCls : inactiveCls;
+      if (btnText) {
+        btnText.textContent = mode === 'separate'
+          ? 'Разложить каждую этикетку на свой лист'
+          : 'Разложить набор на листе';
+      }
+      markPhotoNestingDirty();
     }
 
     function applyTransform() {
@@ -2449,9 +2889,34 @@
       document.getElementById('liveCard35').addEventListener('click', () => setFormat('35x50'));
       document.getElementById('liveCard50').addEventListener('click', () => setFormat('50x70'));
 
-      document.getElementById('btnShapeRect').addEventListener('click', () => setShapeType('rect'));
-      document.getElementById('btnShapeOval').addEventListener('click', () => setShapeType('oval'));
-      document.getElementById('btnShapePhoto').addEventListener('click', () => setShapeType('photo'));
+      document.getElementById('btnTabSimple').addEventListener('click', () => {
+        if (state.shapeType === 'photo') setShapeType('rect');
+      });
+      document.getElementById('btnTabPhoto').addEventListener('click', () => setShapeType('photo'));
+
+      document.getElementById('btnSubRect').addEventListener('click', () => setShapeType('rect'));
+      document.getElementById('btnSubOval').addEventListener('click', () => setShapeType('oval'));
+      document.getElementById('btnSubPoly').addEventListener('click', () => setShapeType('poly'));
+
+      document.getElementById('inputPolySides').addEventListener('input', () => {
+        recalculateAndRender();
+      });
+      document.querySelectorAll('.preset-sides-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById('inputPolySides').value = btn.dataset.sides;
+          document.querySelectorAll('.preset-sides-btn').forEach(b => {
+            b.className = 'preset-sides-btn px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer';
+          });
+          btn.className = 'preset-sides-btn px-2 py-1 rounded bg-amber-500/25 border border-amber-500/50 text-[10px] font-mono text-amber-200 font-bold cursor-pointer';
+          recalculateAndRender();
+        });
+      });
+
+      document.getElementById('btnPhotoLayoutSet').addEventListener('click', () => setPhotoLayoutMode('set'));
+      document.getElementById('btnPhotoLayoutSeparate').addEventListener('click', () => setPhotoLayoutMode('separate'));
+      document.getElementById('chkPhotoBoundingBox').addEventListener('change', () => {
+        markPhotoNestingDirty();
+      });
 
       document.getElementById('swapDimsBtn').addEventListener('click', () => {
         const wEl = document.getElementById('inputWidth');
