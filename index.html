@@ -2219,17 +2219,7 @@
       renderPhotoPreviewCanvas();
       syncQuickAlignBar();
 
-      const card = document.querySelector(`.shape-card[data-idx="${idx}"]`);
-      if (card && !rebuildCards) {
-        const angleText = card.querySelector('.step1-angle-val');
-        if (angleText) angleText.textContent = `${norm > 0 ? '+' : ''}${norm.toFixed(1)}°`;
-        const sliderInCard = card.querySelector('.shape-rot-slider');
-        if (sliderInCard) sliderInCard.value = norm;
-        const step2Div = card.querySelector('.step2-box');
-        if (step2Div) step2Div.classList.remove('opacity-45', 'pointer-events-none');
-        const confirmBtn = card.querySelector('.confirm-align-btn');
-        if (confirmBtn) confirmBtn.remove();
-      } else {
+      if (rebuildCards) {
         renderDetectedShapesCards();
       }
     }
@@ -2304,31 +2294,10 @@
               </div>
             </div>
 
-            <!-- ШАГ 1: ВЫРАВНИВАНИЕ -->
-            <div class="bg-slate-950/80 border border-slate-800/90 rounded-lg p-2.5 space-y-2 mb-2">
-              <div class="flex items-center justify-between text-[11px]">
-                <span class="font-semibold text-amber-300">Шаг 1. Выравнивание: <span class="step1-angle-val font-mono text-white">${sh.angleDeg > 0 ? '+' : ''}${sh.angleDeg.toFixed(1)}°</span></span>
-                <div class="flex items-center gap-1">
-                  <button type="button" data-idx="${idx}" data-delta="-90" class="rot-btn px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300 cursor-pointer">-90°</button>
-                  <button type="button" data-idx="${idx}" data-reset="1" class="rot-btn px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300 cursor-pointer">0°</button>
-                  <button type="button" data-idx="${idx}" data-delta="90" class="rot-btn px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300 cursor-pointer">+90°</button>
-                </div>
-              </div>
-
-              <input type="range" min="-180" max="180" step="0.5" value="${sh.angleDeg}" data-idx="${idx}"
-                class="shape-rot-slider w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
-
-              ${!step2Unlocked ? `
-                <button type="button" data-idx="${idx}" class="confirm-align-btn w-full py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 text-[11px] font-semibold transition cursor-pointer">
-                  ✓ Этикетка выровнена — перейти к размерам
-                </button>
-              ` : ''}
-            </div>
-
-            <!-- ШАГ 2: РАЗМЕРЫ (ММ) И КОЛИЧЕСТВО В НАБОРЕ (ШТ.) -->
-            <div class="step2-box ${step2Unlocked ? '' : 'opacity-45 pointer-events-none'} transition-opacity">
+            <!-- ГАБАРИТЫ (ММ) И КОЛИЧЕСТВО В НАБОРЕ (ШТ.) -->
+            <div class="step2-box transition-opacity">
               <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                <span class="font-semibold text-emerald-300">Шаг 2. Габариты и доля в наборе:</span>
+                <span class="font-semibold text-emerald-300">Размеры и доля в наборе:</span>
                 <button type="button" data-idx="${idx}" class="zero-qty-btn text-[10px] font-mono text-slate-400 hover:text-rose-300 underline cursor-pointer">
                   Поставить 0 (убрать)
                 </button>
