@@ -217,12 +217,12 @@
             </div>
 
             <div id="photoWorkspace" class="hidden space-y-3">
-              <!-- Предпросмотр фото с контурами -->
-              <div class="bg-slate-950 border border-slate-800 rounded-xl p-2">
-                <div class="relative w-full bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center min-h-[180px]">
-                  <canvas id="outputCanvas" class="max-w-full max-h-[260px] object-contain cursor-pointer"></canvas>
+              <!-- Липкий блок предпросмотра фото + быстрое выравнивание выбранной этикетки (удобно на телефоне) -->
+              <div class="sticky top-0 z-10 bg-slate-950/98 backdrop-blur-md border border-slate-700/90 rounded-xl p-2 space-y-2 shadow-xl">
+                <div class="relative w-full bg-slate-900 rounded-lg overflow-hidden flex items-center justify-center min-h-[145px]">
+                  <canvas id="outputCanvas" class="max-w-full max-h-[190px] object-contain cursor-pointer"></canvas>
                 </div>
-                <div class="flex justify-between items-center mt-1.5 px-1 text-[11px] text-slate-400">
+                <div class="flex justify-between items-center px-1 text-[11px] text-slate-400">
                   <span id="polyInfo">Найдено контуров: 0</span>
                   <div class="flex items-center gap-1.5">
                     <span>Линия:</span>
@@ -230,6 +230,20 @@
                     <button type="button" data-color="#facc15" class="line-color-btn w-3.5 h-3.5 rounded-full bg-[#facc15] cursor-pointer" title="Жёлтый"></button>
                     <button type="button" data-color="#00f0ff" class="line-color-btn w-3.5 h-3.5 rounded-full bg-[#00f0ff] cursor-pointer" title="Голубой"></button>
                   </div>
+                </div>
+
+                <!-- Быстрые кнопки выбора этикетки (#1, #2, #3...) и ползунок поворота прямо под фото -->
+                <div id="quickAlignBar" class="hidden bg-slate-900/95 border border-amber-500/35 rounded-lg p-2 space-y-1.5">
+                  <div id="quickShapeChips" class="flex flex-wrap gap-1.5"></div>
+                  <div class="flex items-center justify-between text-[11px]">
+                    <span id="quickAlignTitle" class="font-semibold text-amber-300">Выравнивание #1: <span id="quickAlignAngle" class="font-mono text-white">0.0°</span></span>
+                    <div class="flex items-center gap-1">
+                      <button type="button" id="quickRotMinus90" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer">-90°</button>
+                      <button type="button" id="quickRotReset" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer">0°</button>
+                      <button type="button" id="quickRotPlus90" class="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-200 cursor-pointer">+90°</button>
+                    </div>
+                  </div>
+                  <input type="range" id="quickRotSlider" min="-180" max="180" step="0.5" value="0" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer" />
                 </div>
               </div>
 
@@ -2156,6 +2170,70 @@
       ctx.restore();
     }
 
+    function syncQuickAlignBar() {
+      const bar = document.getElementById('quickAlignBar');
+      const chipsEl = document.getElementById('quickShapeChips');
+      const titleEl = document.getElementById('quickAlignTitle');
+      const sliderEl = document.getElementById('quickRotSlider');
+
+      if (!bar || photoShapes.length === 0) {
+        if (bar) bar.classList.add('hidden');
+        return;
+      }
+
+      bar.classList.remove('hidden');
+
+      chipsEl.innerHTML = photoShapes.map((sh, idx) => {
+        const isSel = idx === selectedPhotoShapeIdx;
+        const qty = parseInt(sh.qtyInSet, 10) || 0;
+        const isExcl = qty === 0;
+        const cls = isSel
+          ? 'bg-pink-600 text-white border-pink-400 shadow'
+          : isExcl
+            ? 'bg-slate-800/70 text-slate-500 border-slate-700'
+            : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700';
+        return `<button type="button" data-idx="${idx}" class="quick-chip-btn px-2.5 py-1 rounded-md border text-[11px] font-mono font-bold transition cursor-pointer ${cls}">#${sh.id} (${sh.angleDeg > 0 ? '+' : ''}${sh.angleDeg.toFixed(0)}° • ${qty}шт)</button>`;
+      }).join('');
+
+      document.querySelectorAll('.quick-chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedPhotoShapeIdx = parseInt(btn.dataset.idx, 10);
+          renderPhotoPreviewCanvas();
+          renderDetectedShapesCards();
+        });
+      });
+
+      const active = photoShapes[selectedPhotoShapeIdx];
+      const deg = active.angleDeg || 0;
+      titleEl.innerHTML = `Выравнивание #${active.id}: <span id="quickAlignAngle" class="font-mono text-white">${deg > 0 ? '+' : ''}${deg.toFixed(1)}°</span>`;
+      sliderEl.value = deg;
+    }
+
+    function applyAngleToShape(idx, newDeg, rebuildCards = false) {
+      selectedPhotoShapeIdx = idx;
+      let norm = ((newDeg + 180) % 360 + 360) % 360 - 180;
+      if (newDeg === 180) norm = 180;
+      photoShapes[idx].angleDeg = norm;
+      photoShapes[idx].alignedConfirmed = true;
+      markPhotoNestingDirty();
+      renderPhotoPreviewCanvas();
+      syncQuickAlignBar();
+
+      const card = document.querySelector(`.shape-card[data-idx="${idx}"]`);
+      if (card && !rebuildCards) {
+        const angleText = card.querySelector('.step1-angle-val');
+        if (angleText) angleText.textContent = `${norm > 0 ? '+' : ''}${norm.toFixed(1)}°`;
+        const sliderInCard = card.querySelector('.shape-rot-slider');
+        if (sliderInCard) sliderInCard.value = norm;
+        const step2Div = card.querySelector('.step2-box');
+        if (step2Div) step2Div.classList.remove('opacity-45', 'pointer-events-none');
+        const confirmBtn = card.querySelector('.confirm-align-btn');
+        if (confirmBtn) confirmBtn.remove();
+      } else {
+        renderDetectedShapesCards();
+      }
+    }
+
     function renderDetectedShapesCards() {
       const container = document.getElementById('detectedShapesList');
       const summaryEl = document.getElementById('setCompositionSummary');
@@ -2163,6 +2241,7 @@
       if (photoShapes.length === 0) {
         container.innerHTML = `<div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400 text-center">Контуры не найдены. Попробуйте изменить «Режим фона» или «Чувствительность границ».</div>`;
         summaryEl.textContent = '0 шт. в наборе';
+        syncQuickAlignBar();
         return;
       }
 
@@ -2183,17 +2262,35 @@
         const hasDims = (parseFloat(sh.widthMm) > 0 && parseFloat(sh.heightMm) > 0);
         const step2Unlocked = sh.alignedConfirmed || hasDims || Math.abs(sh.angleDeg) > 0;
 
-        const cardBorder = isSelected
-          ? 'border-pink-500/80 ring-1 ring-pink-500/30 bg-slate-900'
-          : 'border-slate-800 bg-slate-900/70 hover:border-slate-700';
+        // Неактивные контуры сворачиваем в одну компактную строку, чтобы на экране телефона не было длинного скролла
+        if (!isSelected) {
+          return `
+            <div class="shape-card rounded-xl border border-slate-800 bg-slate-900/65 hover:border-slate-700 px-3 py-2 flex items-center justify-between gap-2 cursor-pointer select-shape-trigger ${isExcluded ? 'opacity-50' : ''}" data-idx="${idx}">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${palette.badge}">#${sh.id}</span>
+                <span class="text-xs font-medium text-slate-200 truncate">${sh.name}</span>
+                <span class="text-[10px] font-mono text-slate-400">${sh.angleDeg > 0 ? '+' : ''}${sh.angleDeg.toFixed(0)}°</span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0 text-[10px] font-mono">
+                ${isExcluded
+                  ? `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">0 шт (выкл)</span>`
+                  : hasDims
+                    ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">${sh.widthMm}×${sh.heightMm} • ${qty}шт</span>`
+                    : `<span class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">задать размер</span>`
+                }
+                <span class="text-pink-400 font-semibold">ред.</span>
+              </div>
+            </div>
+          `;
+        }
 
         return `
-          <div class="shape-card rounded-xl border p-3 transition ${cardBorder} ${isExcluded ? 'opacity-55' : ''}" data-idx="${idx}">
-            <div class="flex items-center justify-between gap-2 mb-2.5 cursor-pointer select-shape-trigger" data-idx="${idx}">
+          <div class="shape-card rounded-xl border-2 border-pink-500/80 ring-1 ring-pink-500/30 bg-slate-900 p-3 transition ${isExcluded ? 'opacity-65' : ''}" data-idx="${idx}">
+            <div class="flex items-center justify-between gap-2 mb-2.5">
               <div class="flex items-center gap-2 min-w-0">
                 <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold border ${palette.badge}">#${sh.id}</span>
                 <input type="text" value="${sh.name.replace(/"/g, '&quot;')}" data-idx="${idx}"
-                  class="shape-name-input bg-transparent border-b border-transparent hover:border-slate-600 focus:border-cyan-400 text-xs font-semibold text-white focus:outline-none truncate w-32 sm:w-36"
+                  class="shape-name-input bg-transparent border-b border-slate-700 focus:border-cyan-400 text-xs font-semibold text-white focus:outline-none truncate w-32 sm:w-36"
                   title="Можно переименовать (например: Передняя, Верхняя)" />
               </div>
 
@@ -2210,7 +2307,7 @@
             <!-- ШАГ 1: ВЫРАВНИВАНИЕ -->
             <div class="bg-slate-950/80 border border-slate-800/90 rounded-lg p-2.5 space-y-2 mb-2">
               <div class="flex items-center justify-between text-[11px]">
-                <span class="font-semibold text-amber-300">Шаг 1. Выравнивание: <span class="font-mono text-white">${sh.angleDeg > 0 ? '+' : ''}${sh.angleDeg.toFixed(1)}°</span></span>
+                <span class="font-semibold text-amber-300">Шаг 1. Выравнивание: <span class="step1-angle-val font-mono text-white">${sh.angleDeg > 0 ? '+' : ''}${sh.angleDeg.toFixed(1)}°</span></span>
                 <div class="flex items-center gap-1">
                   <button type="button" data-idx="${idx}" data-delta="-90" class="rot-btn px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300 cursor-pointer">-90°</button>
                   <button type="button" data-idx="${idx}" data-reset="1" class="rot-btn px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-slate-300 cursor-pointer">0°</button>
@@ -2229,7 +2326,7 @@
             </div>
 
             <!-- ШАГ 2: РАЗМЕРЫ (ММ) И КОЛИЧЕСТВО В НАБОРЕ (ШТ.) -->
-            <div class="${step2Unlocked ? '' : 'opacity-45 pointer-events-none'} transition-opacity">
+            <div class="step2-box ${step2Unlocked ? '' : 'opacity-45 pointer-events-none'} transition-opacity">
               <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
                 <span class="font-semibold text-emerald-300">Шаг 2. Габариты и доля в наборе:</span>
                 <button type="button" data-idx="${idx}" class="zero-qty-btn text-[10px] font-mono text-slate-400 hover:text-rose-300 underline cursor-pointer">
@@ -2258,6 +2355,7 @@
         `;
       }).join('');
 
+      syncQuickAlignBar();
       bindShapeCardsEvents();
     }
 
@@ -2282,42 +2380,16 @@
       document.querySelectorAll('.shape-rot-slider').forEach(sl => {
         sl.addEventListener('input', () => {
           const idx = parseInt(sl.dataset.idx, 10);
-          selectedPhotoShapeIdx = idx;
-          photoShapes[idx].angleDeg = parseFloat(sl.value) || 0;
-          photoShapes[idx].alignedConfirmed = true;
-          renderPhotoPreviewCanvas();
-
-          const card = sl.closest('.shape-card');
-          const labelSpan = card.querySelector('span.font-mono.text-white');
-          if (labelSpan) {
-            const deg = photoShapes[idx].angleDeg;
-            labelSpan.textContent = `${deg > 0 ? '+' : ''}${deg.toFixed(1)}°`;
-          }
-          const step2Div = card.querySelector('.opacity-45');
-          if (step2Div) step2Div.classList.remove('opacity-45', 'pointer-events-none');
-          const confirmBtn = card.querySelector('.confirm-align-btn');
-          if (confirmBtn) confirmBtn.remove();
-
-          markPhotoNestingDirty();
+          applyAngleToShape(idx, parseFloat(sl.value) || 0, false);
         });
       });
 
       document.querySelectorAll('.rot-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const idx = parseInt(btn.dataset.idx, 10);
-          selectedPhotoShapeIdx = idx;
-          if (btn.dataset.reset) {
-            photoShapes[idx].angleDeg = 0;
-          } else {
-            const delta = parseFloat(btn.dataset.delta);
-            let next = (photoShapes[idx].angleDeg || 0) + delta;
-            next = ((next + 180) % 360 + 360) % 360 - 180;
-            photoShapes[idx].angleDeg = next;
-          }
-          photoShapes[idx].alignedConfirmed = true;
-          renderPhotoPreviewCanvas();
-          renderDetectedShapesCards();
-          markPhotoNestingDirty();
+          const cur = photoShapes[idx].angleDeg || 0;
+          const next = btn.dataset.reset ? 0 : cur + parseFloat(btn.dataset.delta);
+          applyAngleToShape(idx, next, true);
         });
       });
 
@@ -2543,6 +2615,23 @@
       });
 
       document.getElementById('runPhotoNestingBtn').addEventListener('click', runPhotoNestingManual);
+
+      document.getElementById('quickRotSlider').addEventListener('input', (e) => {
+        if (!photoShapes.length) return;
+        applyAngleToShape(selectedPhotoShapeIdx, parseFloat(e.target.value) || 0, false);
+      });
+      document.getElementById('quickRotMinus90').addEventListener('click', () => {
+        if (!photoShapes.length) return;
+        applyAngleToShape(selectedPhotoShapeIdx, (photoShapes[selectedPhotoShapeIdx].angleDeg || 0) - 90, true);
+      });
+      document.getElementById('quickRotReset').addEventListener('click', () => {
+        if (!photoShapes.length) return;
+        applyAngleToShape(selectedPhotoShapeIdx, 0, true);
+      });
+      document.getElementById('quickRotPlus90').addEventListener('click', () => {
+        if (!photoShapes.length) return;
+        applyAngleToShape(selectedPhotoShapeIdx, (photoShapes[selectedPhotoShapeIdx].angleDeg || 0) + 90, true);
+      });
 
       document.getElementById('fileInput').addEventListener('change', handleImageUpload);
       document.getElementById('cameraInput').addEventListener('change', handleImageUpload);
