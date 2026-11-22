@@ -77,16 +77,7 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-2">
-      <button id="exportSvgBtn" type="button" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white text-xs sm:text-sm font-semibold transition cursor-pointer shadow-lg shadow-cyan-500/20">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-        <span>Скачать SVG (1:1 мм)</span>
-      </button>
-    </div>
+
   </header>
 
   <!-- ОСНОВНОЙ КОНТЕЙНЕР -->
@@ -96,47 +87,12 @@
     <aside class="w-full lg:w-[440px] xl:w-[470px] bg-slate-900/95 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col shrink-0 lg:h-[calc(100vh-61px)]">
       <div class="flex-1 overflow-y-auto p-4 space-y-4">
 
-        <!-- 1. ФОРМАТ ПЕЧАТНОГО ЛИСТА -->
-        <section class="bg-slate-850 border border-slate-800 rounded-xl p-3.5 space-y-3">
-          <div class="flex items-center justify-between">
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              <span class="w-1.5 h-4 rounded-full bg-cyan-500"></span>
-              1. Формат листа (поля 10 мм)
-            </h2>
-            <span class="text-[11px] font-mono text-slate-400">Офсет</span>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2.5">
-            <button id="btnFormat35x50" type="button" class="text-left p-3 rounded-xl border-2 border-cyan-500 bg-cyan-500/10 transition cursor-pointer">
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-base font-bold font-mono text-white">35×50 см</span>
-                <span id="dotFormat35x50" class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></span>
-              </div>
-              <div class="text-[11px] font-mono text-slate-300">Лист: 350 × 500 мм</div>
-              <div class="mt-1.5 pt-1.5 border-t border-cyan-500/25 text-[11px] font-mono text-cyan-300 font-semibold">
-                Зона: 330 × 480 мм
-              </div>
-            </button>
-
-            <button id="btnFormat50x70" type="button" class="text-left p-3 rounded-xl border-2 border-slate-700/80 bg-slate-900/70 hover:border-slate-600 transition cursor-pointer">
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-base font-bold font-mono text-white">50×70 см</span>
-                <span id="dotFormat50x70" class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
-              </div>
-              <div class="text-[11px] font-mono text-slate-400">Лист: 500 × 700 мм</div>
-              <div class="mt-1.5 pt-1.5 border-t border-slate-800 text-[11px] font-mono text-slate-300 font-semibold">
-                Зона: 480 × 680 мм
-              </div>
-            </button>
-          </div>
-        </section>
-
         <!-- 2. ФОРМА И РАЗМЕР ЭТИКЕТКИ (3 ВКЛАДКИ) -->
         <section class="bg-slate-850 border border-slate-800 rounded-xl p-3.5 space-y-3">
           <div class="flex items-center justify-between">
             <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <span class="w-1.5 h-4 rounded-full bg-emerald-500"></span>
-              2. Форма и размер этикетки
+              1. Форма и размер этикетки
             </h2>
             <span id="detectedShapeBadge" class="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
               Прямоугольник
@@ -326,7 +282,7 @@
         <section class="bg-slate-850 border border-slate-800 rounded-xl p-3.5 space-y-3">
           <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
             <span class="w-1.5 h-4 rounded-full bg-purple-500"></span>
-            3. Зазор и стратегия нестинга
+            2. Зазор и стратегия нестинга
           </h2>
 
           <div>
@@ -392,7 +348,7 @@
           <div class="flex items-center justify-between">
             <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <span class="w-1.5 h-4 rounded-full bg-amber-400"></span>
-              Сравнение форматов (живой расчёт)
+              3. Формат листа (живое сравнение)
             </h2>
             <span id="compareWinnerBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
               50×70 выгоднее
@@ -505,6 +461,14 @@
           </button>
           <button id="btnFitScreen" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium cursor-pointer" title="Вписать лист в экран">
             Вписать в экран
+          </button>
+          <button id="exportSvgBtn" type="button" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white text-xs font-semibold transition cursor-pointer shadow-md shadow-cyan-500/20 ml-1" title="Скачать векторный макет 1:1 в миллиметрах">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>Скачать SVG (1:1 мм)</span>
           </button>
         </div>
       </div>
@@ -2426,22 +2390,6 @@
 
     function setFormat(fmtId) {
       state.format = fmtId;
-      const b35 = document.getElementById('btnFormat35x50');
-      const b50 = document.getElementById('btnFormat50x70');
-      const d35 = document.getElementById('dotFormat35x50');
-      const d50 = document.getElementById('dotFormat50x70');
-
-      if (fmtId === '35x50') {
-        b35.className = 'text-left p-3 rounded-xl border-2 border-cyan-500 bg-cyan-500/10 transition cursor-pointer';
-        d35.className = 'w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]';
-        b50.className = 'text-left p-3 rounded-xl border-2 border-slate-700/80 bg-slate-900/70 hover:border-slate-600 transition cursor-pointer';
-        d50.className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
-      } else {
-        b50.className = 'text-left p-3 rounded-xl border-2 border-emerald-500 bg-emerald-500/10 transition cursor-pointer';
-        d50.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]';
-        b35.className = 'text-left p-3 rounded-xl border-2 border-slate-700/80 bg-slate-900/70 hover:border-slate-600 transition cursor-pointer';
-        d35.className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
-      }
       recalculateAndRender();
     }
 
@@ -2497,8 +2445,7 @@
     }
 
     function initEvents() {
-      document.getElementById('btnFormat35x50').addEventListener('click', () => setFormat('35x50'));
-      document.getElementById('btnFormat50x70').addEventListener('click', () => setFormat('50x70'));
+
       document.getElementById('liveCard35').addEventListener('click', () => setFormat('35x50'));
       document.getElementById('liveCard50').addEventListener('click', () => setFormat('50x70'));
 
