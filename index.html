@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <!-- Запрет индексации поисковыми системами (Google, Яндекс и др.) -->
+  <!-- Запрет индексации поисковыми системами -->
   <meta name="robots" content="noindex, nofollow">
   <meta name="googlebot" content="noindex, nofollow">
   <title>Контур этикетки по фото → SVG (1:1 мм)</title>
@@ -20,7 +20,7 @@
     <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 flex items-center justify-between">
       <div>
         <h1 class="text-lg font-bold text-slate-900 leading-tight">Контур по фото → SVG</h1>
-        <p class="text-xs text-slate-500 mt-0.5">Снятие грубой формы этикетки 1:1 в миллиметрах</p>
+        <p class="text-xs text-slate-500 mt-0.5">Точный силуэт этикетки с выравниванием 1:1 в мм</p>
       </div>
       <span id="cvStatus" class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
         Загрузка OpenCV...
@@ -42,7 +42,7 @@
           <input type="file" id="fileInput" accept="image/*" class="hidden">
         </label>
       </div>
-      <p class="text-[11px] text-slate-400">Совет: кладите светлую этикетку на тёмный стол, а тёмную — на белый лист, снимайте строго сверху.</p>
+      <p class="text-[11px] text-slate-400">Если на фото несколько этикеток — нажмите на нужную прямо на изображении ниже.</p>
     </div>
 
     <!-- Рабочая область -->
@@ -50,18 +50,42 @@
       <!-- Предпросмотр -->
       <div class="bg-white rounded-2xl shadow-sm p-3 border border-slate-200">
         <div class="relative w-full bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center min-h-[240px]">
-          <canvas id="outputCanvas" class="max-w-full max-h-[420px] object-contain"></canvas>
+          <canvas id="outputCanvas" class="max-w-full max-h-[420px] object-contain cursor-pointer"></canvas>
         </div>
         <div class="flex justify-between items-center mt-2 px-1 text-xs text-slate-500">
-          <span id="polyInfo">Вершин: —</span>
+          <span id="polyInfo">Точек контура: —</span>
           <span id="aspectInfo">Пропорция: —</span>
         </div>
       </div>
 
-      <!-- Шаг 2: Настройка контура -->
+      <!-- Шаг 2: Поворот и выравнивание выбранной этикетки -->
+      <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-slate-700">2. Поворот выбранной этикетки</span>
+          <div class="flex items-center gap-1.5">
+            <button type="button" id="rotMinus90" class="px-2 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700">-90°</button>
+            <button type="button" id="rotReset" class="px-2 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700">0°</button>
+            <button type="button" id="rotPlus90" class="px-2 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700">+90°</button>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-600">Угол поворота (выровнять по рамке)</span>
+            <span id="rotateVal" class="font-semibold text-blue-600">0.0°</span>
+          </div>
+          <input type="range" id="rotateSlider" min="-180" max="180" step="0.5" value="0" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          <div class="flex justify-between text-[10px] text-slate-400">
+            <span>↺ Против часовой (-180°)</span>
+            <span>По часовой (+180°) ↻</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Шаг 3: Настройка контура -->
       <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-4">
         <div class="flex items-center justify-between">
-          <span class="text-sm font-semibold text-slate-700">2. Настройка грубой формы</span>
+          <span class="text-sm font-semibold text-slate-700">3. Настройка силуэта</span>
           <label class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer">
             <input type="checkbox" id="invertCheck" class="rounded border-slate-300 text-blue-600">
             <span>Тёмная на светлом</span>
@@ -78,20 +102,39 @@
 
         <div class="space-y-1">
           <div class="flex justify-between text-xs">
-            <span class="text-slate-600">Упрощение формы (грубость контура)</span>
-            <span id="epsilonVal" class="font-semibold text-slate-900">1.5%</span>
+            <span class="text-slate-600">Разделение близких этикеток</span>
+            <span id="sepVal" class="font-semibold text-slate-900">1 px</span>
           </div>
-          <input type="range" id="epsilonSlider" min="2" max="60" value="15" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          <input type="range" id="sepSlider" min="0" max="8" value="1" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-xs">
+            <span class="text-slate-600">Детализация дуг и полукругов</span>
+            <span id="epsilonVal" class="font-semibold text-slate-900">0.20%</span>
+          </div>
+          <input type="range" id="epsilonSlider" min="1" max="25" value="4" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          <div class="flex justify-between text-[10px] text-slate-400">
+            <span>← Максимально точно (все дуги)</span>
+            <span>Более грубо →</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+          <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+            <input type="checkbox" id="smoothCheck" checked class="rounded border-slate-300 text-blue-600">
+            <span>Плавное сглаживание полукругов (дуг)</span>
+          </label>
         </div>
       </div>
 
-      <!-- Шаг 3: Реальный размер в мм -->
+      <!-- Шаг 4: Реальный размер в мм -->
       <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-3">
-        <span class="text-sm font-semibold text-slate-700 block">3. Реальный размер этикетки (мм)</span>
+        <span class="text-sm font-semibold text-slate-700 block">4. Реальный размер этикетки (мм)</span>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-slate-500 mb-1">Ширина (мм)</label>
-            <input type="number" id="widthMm" step="0.1" min="1" placeholder="Например, 70"
+            <input type="number" id="widthMm" step="0.1" min="1" placeholder="Например, 120"
               class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-base font-semibold focus:outline-none focus:border-blue-500">
           </div>
           <div>
@@ -100,10 +143,10 @@
               class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-base font-semibold focus:outline-none focus:border-blue-500">
           </div>
         </div>
-        <p class="text-[11px] text-slate-400">Введите любой один замеренный размер — второй пересчитается автоматически.</p>
+        <p class="text-[11px] text-slate-400">Введите любой один габарит — второй пересчитается автоматически после выравнивания.</p>
       </div>
 
-      <!-- Шаг 4: Скачивание -->
+      <!-- Шаг 5: Скачивание -->
       <button id="downloadSvgBtn" disabled
         class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 px-5 rounded-2xl shadow-sm transition text-sm">
         ⬇️ Скачать SVG контур (1:1 в мм)
@@ -116,8 +159,11 @@
 
   <script>
     let cvReady = false;
-    let normalizedPoints = []; // [{x: 0..1, y: 0..1}]
-    let aspectRatio = 1;       // width / height
+    let detectedShapes = [];     // [{ pts, area, bbox }]
+    let selectedShapeIdx = 0;    // Индекс выбранной этикетки
+    let normalizedPoints = [];   // [{x: 0..1, y: 0..1}]
+    let aspectRatio = 1;         // width / height
+    let lastBaseCanvas = null;
 
     const cvStatus = document.getElementById('cvStatus');
     const fileInput = document.getElementById('fileInput');
@@ -126,11 +172,20 @@
     const workspace = document.getElementById('workspace');
     const outputCanvas = document.getElementById('outputCanvas');
 
+    const rotateSlider = document.getElementById('rotateSlider');
+    const rotateVal = document.getElementById('rotateVal');
+    const rotMinus90 = document.getElementById('rotMinus90');
+    const rotReset = document.getElementById('rotReset');
+    const rotPlus90 = document.getElementById('rotPlus90');
+
     const threshSlider = document.getElementById('threshSlider');
     const threshVal = document.getElementById('threshVal');
+    const sepSlider = document.getElementById('sepSlider');
+    const sepVal = document.getElementById('sepVal');
     const epsilonSlider = document.getElementById('epsilonSlider');
     const epsilonVal = document.getElementById('epsilonVal');
     const invertCheck = document.getElementById('invertCheck');
+    const smoothCheck = document.getElementById('smoothCheck');
 
     const widthMmInput = document.getElementById('widthMm');
     const heightMmInput = document.getElementById('heightMm');
@@ -151,6 +206,8 @@
       const reader = new FileReader();
       reader.onload = (ev) => {
         hiddenImg.onload = () => {
+          selectedShapeIdx = 0;
+          setRotationAngle(0);
           workspace.classList.remove('hidden');
           if (cvReady) processImage();
         };
@@ -162,19 +219,91 @@
     fileInput.addEventListener('change', handleImageUpload);
     cameraInput.addEventListener('change', handleImageUpload);
 
+    function setRotationAngle(deg) {
+      // Нормализуем в диапазон -180..180
+      let norm = ((deg + 180) % 360 + 360) % 360 - 180;
+      if (deg === 180) norm = 180;
+      rotateSlider.value = norm;
+      rotateVal.textContent = (norm > 0 ? '+' : '') + norm.toFixed(1) + '°';
+      renderSelection();
+    }
+
+    rotateSlider.addEventListener('input', () => {
+      const deg = parseFloat(rotateSlider.value);
+      rotateVal.textContent = (deg > 0 ? '+' : '') + deg.toFixed(1) + '°';
+      renderSelection();
+    });
+
+    rotMinus90.addEventListener('click', () => {
+      setRotationAngle(parseFloat(rotateSlider.value) - 90);
+    });
+    rotReset.addEventListener('click', () => {
+      setRotationAngle(0);
+    });
+    rotPlus90.addEventListener('click', () => {
+      setRotationAngle(parseFloat(rotateSlider.value) + 90);
+    });
+
     threshSlider.addEventListener('input', () => {
       threshVal.textContent = threshSlider.value;
       if (cvReady && hiddenImg.src) processImage();
     });
 
+    sepSlider.addEventListener('input', () => {
+      sepVal.textContent = sepSlider.value + ' px';
+      if (cvReady && hiddenImg.src) processImage();
+    });
+
     epsilonSlider.addEventListener('input', () => {
-      epsilonVal.textContent = (epsilonSlider.value / 10).toFixed(1) + '%';
+      epsilonVal.textContent = (epsilonSlider.value * 0.05).toFixed(2) + '%';
       if (cvReady && hiddenImg.src) processImage();
     });
 
     invertCheck.addEventListener('change', () => {
       if (cvReady && hiddenImg.src) processImage();
     });
+
+    smoothCheck.addEventListener('change', () => {
+      if (cvReady && hiddenImg.src) processImage();
+    });
+
+    // Выбор конкретной этикетки при клике/тапе по canvas
+    outputCanvas.addEventListener('click', (e) => {
+      if (detectedShapes.length <= 1) return;
+      const rect = outputCanvas.getBoundingClientRect();
+      const scaleX = outputCanvas.width / rect.width;
+      const scaleY = outputCanvas.height / rect.height;
+      const clickX = (e.clientX - rect.left) * scaleX;
+      const clickY = (e.clientY - rect.top) * scaleY;
+
+      for (let i = 0; i < detectedShapes.length; i++) {
+        const s = detectedShapes[i];
+        if (pointInPolygon(clickX, clickY, s.pts)) {
+          selectedShapeIdx = i;
+          setRotationAngle(0);
+          return;
+        }
+      }
+      for (let i = 0; i < detectedShapes.length; i++) {
+        const b = detectedShapes[i].bbox;
+        if (clickX >= b.minX && clickX <= b.maxX && clickY >= b.minY && clickY <= b.maxY) {
+          selectedShapeIdx = i;
+          setRotationAngle(0);
+          return;
+        }
+      }
+    });
+
+    function pointInPolygon(x, y, pts) {
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const xi = pts[i].x, yi = pts[i].y;
+        const xj = pts[j].x, yj = pts[j].y;
+        const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
 
     widthMmInput.addEventListener('input', () => {
       const w = parseFloat(widthMmInput.value);
@@ -202,10 +331,47 @@
       downloadSvgBtn.disabled = !(normalizedPoints.length >= 3 && w > 0 && h > 0);
     }
 
+    function smoothArcsPreserveCorners(pts) {
+      if (pts.length < 5) return pts;
+      let current = pts.slice();
+      for (let iter = 0; iter < 2; iter++) {
+        const next = [];
+        const n = current.length;
+        for (let i = 0; i < n; i++) {
+          const p0 = current[(i - 1 + n) % n];
+          const p1 = current[i];
+          const p2 = current[(i + 1) % n];
+
+          const v1x = p0.x - p1.x, v1y = p0.y - p1.y;
+          const v2x = p2.x - p1.x, v2y = p2.y - p1.y;
+          const len1 = Math.hypot(v1x, v1y);
+          const len2 = Math.hypot(v2x, v2y);
+
+          if (len1 > 0 && len2 > 0) {
+            const cosAngle = (v1x * v2x + v1y * v2y) / (len1 * len2);
+            if (cosAngle < -0.42) {
+              next.push({
+                x: 0.75 * p1.x + 0.25 * p0.x,
+                y: 0.75 * p1.y + 0.25 * p0.y
+              });
+              next.push({
+                x: 0.75 * p1.x + 0.25 * p2.x,
+                y: 0.75 * p1.y + 0.25 * p2.y
+              });
+              continue;
+            }
+          }
+          next.push(p1);
+        }
+        current = next;
+      }
+      return current;
+    }
+
     function processImage() {
       if (!cvReady || !hiddenImg.naturalWidth) return;
 
-      const maxDim = 900;
+      const maxDim = 1000;
       let scale = 1;
       if (Math.max(hiddenImg.naturalWidth, hiddenImg.naturalHeight) > maxDim) {
         scale = maxDim / Math.max(hiddenImg.naturalWidth, hiddenImg.naturalHeight);
@@ -218,6 +384,7 @@
       tempCanvas.height = h;
       const ctx = tempCanvas.getContext('2d');
       ctx.drawImage(hiddenImg, 0, 0, w, h);
+      lastBaseCanvas = tempCanvas;
 
       let src = cv.imread(tempCanvas);
       let gray = new cv.Mat();
@@ -228,100 +395,84 @@
 
       try {
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-        cv.GaussianBlur(gray, blurred, new cv.Size(7, 7), 0);
+        cv.GaussianBlur(gray, blurred, new cv.Size(3, 3), 0);
 
         const threshType = invertCheck.checked ? cv.THRESH_BINARY_INV : cv.THRESH_BINARY;
         cv.threshold(blurred, thresh, parseInt(threshSlider.value, 10), 255, threshType);
 
-        let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(9, 9));
-        cv.morphologyEx(thresh, thresh, cv.MORPH_CLOSE, kernel);
-        kernel.delete();
+        const sepPx = parseInt(sepSlider.value, 10);
+        if (sepPx > 0) {
+          const kSize = sepPx * 2 + 1;
+          let erodeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(kSize, kSize));
+          cv.erode(thresh, thresh, erodeKernel);
+          erodeKernel.delete();
+        }
 
-        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE);
 
-        let maxArea = 0;
-        let bestIdx = -1;
+        const shapes = [];
         for (let i = 0; i < contours.size(); i++) {
           let cnt = contours.get(i);
           let area = cv.contourArea(cnt);
-          let rect = cv.boundingRect(cnt);
-          const touchesBorder = rect.x <= 2 || rect.y <= 2 || (rect.x + rect.width) >= w - 2 || (rect.y + rect.height) >= h - 2;
-          if (!touchesBorder && area > maxArea && area > (w * h * 0.01)) {
-            maxArea = area;
-            bestIdx = i;
-          }
-        }
+          if (area < (w * h * 0.015)) continue;
 
-        outputCanvas.width = w;
-        outputCanvas.height = h;
-        const outCtx = outputCanvas.getContext('2d');
-        outCtx.drawImage(tempCanvas, 0, 0);
-
-        if (bestIdx !== -1) {
-          let bestCnt = contours.get(bestIdx);
           let approx = new cv.Mat();
-          let peri = cv.arcLength(bestCnt, true);
-          let eps = (parseFloat(epsilonSlider.value) / 1000) * peri;
-          cv.approxPolyDP(bestCnt, approx, eps, true);
+          let peri = cv.arcLength(cnt, true);
+          let eps = (parseFloat(epsilonSlider.value) * 0.0005) * peri;
+          cv.approxPolyDP(cnt, approx, eps, true);
 
           let pts = [];
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          for (let i = 0; i < approx.rows; i++) {
-            let px = approx.data32S[i * 2];
-            let py = approx.data32S[i * 2 + 1];
-            pts.push({ x: px, y: py });
-            if (px < minX) minX = px;
-            if (py < minY) minY = py;
-            if (px > maxX) maxX = px;
-            if (py > maxY) maxY = py;
+          for (let j = 0; j < approx.rows; j++) {
+            pts.push({
+              x: approx.data32S[j * 2],
+              y: approx.data32S[j * 2 + 1]
+            });
           }
-
-          const boxW = Math.max(1, maxX - minX);
-          const boxH = Math.max(1, maxY - minY);
-          aspectRatio = boxW / boxH;
-
-          normalizedPoints = pts.map(p => ({
-            x: (p.x - minX) / boxW,
-            y: (p.y - minY) / boxH
-          }));
-
-          outCtx.save();
-          outCtx.strokeStyle = '#10b981';
-          outCtx.lineWidth = Math.max(3, Math.round(w / 200));
-          outCtx.fillStyle = 'rgba(16, 185, 129, 0.22)';
-          outCtx.beginPath();
-          pts.forEach((p, idx) => {
-            if (idx === 0) outCtx.moveTo(p.x, p.y);
-            else outCtx.lineTo(p.x, p.y);
-          });
-          outCtx.closePath();
-          outCtx.fill();
-          outCtx.stroke();
-
-          outCtx.fillStyle = '#ffffff';
-          outCtx.strokeStyle = '#059669';
-          outCtx.lineWidth = 2;
-          pts.forEach(p => {
-            outCtx.beginPath();
-            outCtx.arc(p.x, p.y, Math.max(4, Math.round(w / 180)), 0, Math.PI * 2);
-            outCtx.fill();
-            outCtx.stroke();
-          });
-          outCtx.restore();
-
-          polyInfo.textContent = `Вершин: ${pts.length}`;
-          aspectInfo.textContent = `Пропорция Ш/В: ${aspectRatio.toFixed(2)}`;
-
-          if (parseFloat(widthMmInput.value) > 0) {
-            heightMmInput.value = (parseFloat(widthMmInput.value) / aspectRatio).toFixed(1);
-          }
-
           approx.delete();
-        } else {
-          normalizedPoints = [];
-          polyInfo.textContent = 'Контур не найден (подвиньте порог)';
-          aspectInfo.textContent = 'Пропорция: —';
+
+          if (pts.length < 3) continue;
+
+          if (smoothCheck.checked) {
+            pts = smoothArcsPreserveCorners(pts);
+          }
+
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          pts.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y > maxY) maxY = p.y;
+          });
+
+          if (sepPx > 0) {
+            const cx = (minX + maxX) / 2;
+            const cy = (minY + maxY) / 2;
+            const halfW = Math.max(1, (maxX - minX) / 2);
+            const halfH = Math.max(1, (maxY - minY) / 2);
+            const scaleX = (halfW + sepPx) / halfW;
+            const scaleY = (halfH + sepPx) / halfH;
+            pts = pts.map(p => ({
+              x: cx + (p.x - cx) * scaleX,
+              y: cy + (p.y - cy) * scaleY
+            }));
+            minX -= sepPx; maxX += sepPx;
+            minY -= sepPx; maxY += sepPx;
+          }
+
+          shapes.push({
+            pts,
+            area,
+            bbox: { minX, minY, maxX, maxY }
+          });
         }
+
+        shapes.sort((a, b) => b.area - a.area);
+        detectedShapes = shapes;
+        if (selectedShapeIdx >= detectedShapes.length) {
+          selectedShapeIdx = 0;
+        }
+
+        renderSelection();
       } finally {
         src.delete();
         gray.delete();
@@ -329,8 +480,138 @@
         thresh.delete();
         contours.delete();
         hierarchy.delete();
-        updateDownloadButton();
       }
+    }
+
+    function rotatePoints(pts, cx, cy, angleDeg) {
+      if (!angleDeg) return pts.map(p => ({ x: p.x, y: p.y }));
+      const rad = (angleDeg * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      return pts.map(p => {
+        const dx = p.x - cx;
+        const dy = p.y - cy;
+        return {
+          x: cx + dx * cos - dy * sin,
+          y: cy + dx * sin + dy * cos
+        };
+      });
+    }
+
+    function renderSelection() {
+      if (!lastBaseCanvas) return;
+      const w = lastBaseCanvas.width;
+      const h = lastBaseCanvas.height;
+
+      outputCanvas.width = w;
+      outputCanvas.height = h;
+      const outCtx = outputCanvas.getContext('2d');
+      outCtx.drawImage(lastBaseCanvas, 0, 0);
+
+      if (detectedShapes.length === 0) {
+        normalizedPoints = [];
+        polyInfo.textContent = 'Контур не найден (подвиньте порог)';
+        aspectInfo.textContent = 'Пропорция: —';
+        updateDownloadButton();
+        return;
+      }
+
+      // Невыбранные этикетки тонким пунктиром
+      detectedShapes.forEach((shape, idx) => {
+        if (idx === selectedShapeIdx) return;
+        outCtx.save();
+        outCtx.strokeStyle = 'rgba(59, 130, 246, 0.75)';
+        outCtx.setLineDash([6, 4]);
+        outCtx.lineWidth = Math.max(2, Math.round(w / 350));
+        outCtx.beginPath();
+        shape.pts.forEach((p, i) => {
+          if (i === 0) outCtx.moveTo(p.x, p.y);
+          else outCtx.lineTo(p.x, p.y);
+        });
+        outCtx.closePath();
+        outCtx.stroke();
+        outCtx.restore();
+      });
+
+      // Активная выбранная этикетка + поворот на выбранный угол
+      const active = detectedShapes[selectedShapeIdx];
+      const cx = (active.bbox.minX + active.bbox.maxX) / 2;
+      const cy = (active.bbox.minY + active.bbox.maxY) / 2;
+      const angleDeg = parseFloat(rotateSlider.value) || 0;
+
+      const rotatedPts = rotatePoints(active.pts, cx, cy, angleDeg);
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      rotatedPts.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      });
+
+      const boxW = Math.max(1, maxX - minX);
+      const boxH = Math.max(1, maxY - minY);
+      aspectRatio = boxW / boxH;
+
+      normalizedPoints = rotatedPts.map(p => ({
+        x: (p.x - minX) / boxW,
+        y: (p.y - minY) / boxH
+      }));
+
+      // Если угол не 0, слегка затемняем фон и подрисовываем повёрнутый фрагмент фото под контуром для наглядности
+      if (angleDeg !== 0) {
+        outCtx.save();
+        outCtx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+        outCtx.fillRect(0, 0, w, h);
+
+        outCtx.beginPath();
+        rotatedPts.forEach((p, idx) => {
+          if (idx === 0) outCtx.moveTo(p.x, p.y);
+          else outCtx.lineTo(p.x, p.y);
+        });
+        outCtx.closePath();
+        outCtx.clip();
+
+        outCtx.translate(cx, cy);
+        outCtx.rotate((angleDeg * Math.PI) / 180);
+        outCtx.translate(-cx, -cy);
+        outCtx.drawImage(lastBaseCanvas, 0, 0);
+        outCtx.restore();
+      }
+
+      // Габаритная контрольная рамка (горизонталь/вертикаль) для визуального выравнивания
+      outCtx.save();
+      outCtx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+      outCtx.setLineDash([5, 5]);
+      outCtx.lineWidth = Math.max(1.5, Math.round(w / 450));
+      outCtx.strokeRect(minX, minY, boxW, boxH);
+      outCtx.restore();
+
+      // Яркий зелёный контур высечки
+      outCtx.save();
+      outCtx.strokeStyle = '#10b981';
+      outCtx.lineWidth = Math.max(3, Math.round(w / 220));
+      outCtx.lineJoin = 'round';
+      outCtx.fillStyle = 'rgba(16, 185, 129, 0.16)';
+      outCtx.beginPath();
+      rotatedPts.forEach((p, idx) => {
+        if (idx === 0) outCtx.moveTo(p.x, p.y);
+        else outCtx.lineTo(p.x, p.y);
+      });
+      outCtx.closePath();
+      outCtx.fill();
+      outCtx.stroke();
+      outCtx.restore();
+
+      const foundCountText = detectedShapes.length > 1 ? ` (этикетка ${selectedShapeIdx + 1} из ${detectedShapes.length})` : '';
+      polyInfo.textContent = `Точек: ${rotatedPts.length}${foundCountText}`;
+      aspectInfo.textContent = `Пропорция Ш/В: ${aspectRatio.toFixed(2)}`;
+
+      if (parseFloat(widthMmInput.value) > 0) {
+        heightMmInput.value = (parseFloat(widthMmInput.value) / aspectRatio).toFixed(1);
+      }
+
+      updateDownloadButton();
     }
 
     downloadSvgBtn.addEventListener('click', () => {
