@@ -20,7 +20,7 @@
     <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 flex items-center justify-between">
       <div>
         <h1 class="text-lg font-bold text-slate-900 leading-tight">Контур по фото → SVG</h1>
-        <p class="text-xs text-slate-500 mt-0.5">Точный силуэт этикетки с выравниванием 1:1 в мм</p>
+        <p class="text-xs text-slate-500 mt-0.5">Точный силуэт этикетки (любой цвет и фон) 1:1 в мм</p>
       </div>
       <span id="cvStatus" class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
         Загрузка OpenCV...
@@ -30,7 +30,7 @@
     <!-- Шаг 1: Фото -->
     <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-3">
       <div class="flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-700">1. Фото этикетки на контрастном фоне</span>
+        <span class="text-sm font-semibold text-slate-700">1. Фото этикетки</span>
       </div>
       <div class="grid grid-cols-2 gap-2">
         <label class="cursor-pointer flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm py-3 px-4 rounded-xl transition text-center">
@@ -53,8 +53,13 @@
           <canvas id="outputCanvas" class="max-w-full max-h-[420px] object-contain cursor-pointer"></canvas>
         </div>
         <div class="flex justify-between items-center mt-2 px-1 text-xs text-slate-500">
-          <span id="polyInfo">Точек контура: —</span>
-          <span id="sizePreviewInfo">Габарит: —</span>
+          <span id="polyInfo" class="font-medium text-slate-700">Точек контура: —</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-slate-400">Цвет линии:</span>
+            <button type="button" data-color="#ff007f" class="line-color-btn w-4 h-4 rounded-full bg-[#ff007f] ring-2 ring-offset-1 ring-slate-400" title="Маджента"></button>
+            <button type="button" data-color="#facc15" class="line-color-btn w-4 h-4 rounded-full bg-[#facc15]" title="Ярко-жёлтый"></button>
+            <button type="button" data-color="#00f0ff" class="line-color-btn w-4 h-4 rounded-full bg-[#00f0ff]" title="Неон-голубой"></button>
+          </div>
         </div>
       </div>
 
@@ -86,26 +91,27 @@
       <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-4">
         <div class="flex items-center justify-between">
           <span class="text-sm font-semibold text-slate-700">3. Настройка силуэта</span>
-          <label class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer">
-            <input type="checkbox" id="invertCheck" class="rounded border-slate-300 text-blue-600">
-            <span>Тёмная на светлом</span>
-          </label>
+          <select id="detectMode" class="text-xs font-medium bg-slate-100 border border-slate-300 rounded-lg px-2 py-1 text-slate-700 focus:outline-none">
+            <option value="auto" selected>Авто (по границам и цвету)</option>
+            <option value="light">Светлая на тёмном</option>
+            <option value="dark">Тёмная на светлом</option>
+          </select>
         </div>
 
         <div class="space-y-1">
           <div class="flex justify-between text-xs">
-            <span class="text-slate-600">Порог контраста (отсечение теней)</span>
-            <span id="threshVal" class="font-semibold text-slate-900">130</span>
+            <span id="threshLabel" class="text-slate-600">Чувствительность границ</span>
+            <span id="threshVal" class="font-semibold text-slate-900">45</span>
           </div>
-          <input type="range" id="threshSlider" min="10" max="245" value="130" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          <input type="range" id="threshSlider" min="10" max="220" value="45" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
         </div>
 
         <div class="space-y-1">
           <div class="flex justify-between text-xs">
             <span class="text-slate-600">Разделение близких этикеток</span>
-            <span id="sepVal" class="font-semibold text-slate-900">1 px</span>
+            <span id="sepVal" class="font-semibold text-slate-900">2 px</span>
           </div>
-          <input type="range" id="sepSlider" min="0" max="8" value="1" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
+          <input type="range" id="sepSlider" min="0" max="8" value="2" class="w-full h-2 bg-slate-200 rounded-lg cursor-pointer">
         </div>
 
         <div class="space-y-1">
@@ -130,16 +136,19 @@
 
       <!-- Шаг 4: Реальный размер в мм (независимый ввод) -->
       <div class="bg-white rounded-2xl shadow-sm p-4 border border-slate-200 space-y-3">
-        <span class="text-sm font-semibold text-slate-700 block">4. Реальный размер этикетки (мм)</span>
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-slate-700">4. Реальный размер этикетки (мм)</span>
+          <span id="sizePreviewInfo" class="text-xs font-medium text-slate-400">Размер: не задан</span>
+        </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-slate-500 mb-1">Ширина (мм)</label>
-            <input type="number" id="widthMm" step="0.1" min="1" placeholder="Например, 120"
+            <input type="number" id="widthMm" step="0.1" min="1" placeholder="Например, 35"
               class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-base font-semibold focus:outline-none focus:border-blue-500">
           </div>
           <div>
             <label class="block text-xs text-slate-500 mb-1">Высота (мм)</label>
-            <input type="number" id="heightMm" step="0.1" min="1" placeholder="Например, 75"
+            <input type="number" id="heightMm" step="0.1" min="1" placeholder="Например, 60"
               class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-base font-semibold focus:outline-none focus:border-blue-500">
           </div>
         </div>
@@ -163,6 +172,7 @@
     let selectedShapeIdx = 0;    // Индекс выбранной этикетки
     let normalizedPoints = [];   // [{x: 0..1, y: 0..1}]
     let lastBaseCanvas = null;
+    let activeStrokeColor = '#ff007f'; // Контрастная ярко-розовая маджента по умолчанию
 
     const cvStatus = document.getElementById('cvStatus');
     const fileInput = document.getElementById('fileInput');
@@ -177,13 +187,14 @@
     const rotReset = document.getElementById('rotReset');
     const rotPlus90 = document.getElementById('rotPlus90');
 
+    const detectMode = document.getElementById('detectMode');
+    const threshLabel = document.getElementById('threshLabel');
     const threshSlider = document.getElementById('threshSlider');
     const threshVal = document.getElementById('threshVal');
     const sepSlider = document.getElementById('sepSlider');
     const sepVal = document.getElementById('sepVal');
     const epsilonSlider = document.getElementById('epsilonSlider');
     const epsilonVal = document.getElementById('epsilonVal');
-    const invertCheck = document.getElementById('invertCheck');
     const smoothCheck = document.getElementById('smoothCheck');
 
     const widthMmInput = document.getElementById('widthMm');
@@ -191,6 +202,16 @@
     const polyInfo = document.getElementById('polyInfo');
     const sizePreviewInfo = document.getElementById('sizePreviewInfo');
     const downloadSvgBtn = document.getElementById('downloadSvgBtn');
+
+    // Переключение цвета линии предпросмотра
+    document.querySelectorAll('.line-color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeStrokeColor = btn.dataset.color;
+        document.querySelectorAll('.line-color-btn').forEach(b => b.classList.remove('ring-2', 'ring-offset-1', 'ring-slate-400'));
+        btn.classList.add('ring-2', 'ring-offset-1', 'ring-slate-400');
+        renderSelection();
+      });
+    });
 
     function onOpenCvReady() {
       cvReady = true;
@@ -218,6 +239,19 @@
     fileInput.addEventListener('change', handleImageUpload);
     cameraInput.addEventListener('change', handleImageUpload);
 
+    detectMode.addEventListener('change', () => {
+      if (detectMode.value === 'auto') {
+        threshLabel.textContent = 'Чувствительность границ';
+        threshSlider.value = 45;
+        threshVal.textContent = '45';
+      } else {
+        threshLabel.textContent = 'Порог контраста (отсечение теней)';
+        threshSlider.value = 130;
+        threshVal.textContent = '130';
+      }
+      if (cvReady && hiddenImg.src) processImage();
+    });
+
     function setRotationAngle(deg) {
       let norm = ((deg + 180) % 360 + 360) % 360 - 180;
       if (deg === 180) norm = 180;
@@ -232,15 +266,9 @@
       renderSelection();
     });
 
-    rotMinus90.addEventListener('click', () => {
-      setRotationAngle(parseFloat(rotateSlider.value) - 90);
-    });
-    rotReset.addEventListener('click', () => {
-      setRotationAngle(0);
-    });
-    rotPlus90.addEventListener('click', () => {
-      setRotationAngle(parseFloat(rotateSlider.value) + 90);
-    });
+    rotMinus90.addEventListener('click', () => setRotationAngle(parseFloat(rotateSlider.value) - 90));
+    rotReset.addEventListener('click', () => setRotationAngle(0));
+    rotPlus90.addEventListener('click', () => setRotationAngle(parseFloat(rotateSlider.value) + 90));
 
     threshSlider.addEventListener('input', () => {
       threshVal.textContent = threshSlider.value;
@@ -257,15 +285,10 @@
       if (cvReady && hiddenImg.src) processImage();
     });
 
-    invertCheck.addEventListener('change', () => {
-      if (cvReady && hiddenImg.src) processImage();
-    });
-
     smoothCheck.addEventListener('change', () => {
       if (cvReady && hiddenImg.src) processImage();
     });
 
-    // Выбор конкретной этикетки при клике/тапе по canvas
     outputCanvas.addEventListener('click', (e) => {
       if (detectedShapes.length <= 1) return;
       const rect = outputCanvas.getBoundingClientRect();
@@ -303,7 +326,6 @@
       return inside;
     }
 
-    // Независимый ввод ширины и высоты
     widthMmInput.addEventListener('input', updateSizeAndButton);
     heightMmInput.addEventListener('input', updateSizeAndButton);
 
@@ -312,8 +334,10 @@
       const h = parseFloat(heightMmInput.value);
       if (w > 0 && h > 0) {
         sizePreviewInfo.textContent = `Размер: ${w} × ${h} мм`;
+        sizePreviewInfo.className = 'text-xs font-semibold text-emerald-600';
       } else {
         sizePreviewInfo.textContent = 'Размер: не задан';
+        sizePreviewInfo.className = 'text-xs font-medium text-slate-400';
       }
       downloadSvgBtn.disabled = !(normalizedPoints.length >= 3 && w > 0 && h > 0);
     }
@@ -358,7 +382,7 @@
     function processImage() {
       if (!cvReady || !hiddenImg.naturalWidth) return;
 
-      const maxDim = 1000;
+      const maxDim = 900;
       let scale = 1;
       if (Math.max(hiddenImg.naturalWidth, hiddenImg.naturalHeight) > maxDim) {
         scale = maxDim / Math.max(hiddenImg.naturalWidth, hiddenImg.naturalHeight);
@@ -374,34 +398,69 @@
       lastBaseCanvas = tempCanvas;
 
       let src = cv.imread(tempCanvas);
-      let gray = new cv.Mat();
-      let blurred = new cv.Mat();
-      let thresh = new cv.Mat();
+      let mask = new cv.Mat();
       let contours = new cv.MatVector();
       let hierarchy = new cv.Mat();
 
       try {
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-        cv.GaussianBlur(gray, blurred, new cv.Size(3, 3), 0);
+        const mode = detectMode.value;
+        const sliderVal = parseInt(threshSlider.value, 10);
 
-        const threshType = invertCheck.checked ? cv.THRESH_BINARY_INV : cv.THRESH_BINARY;
-        cv.threshold(blurred, thresh, parseInt(threshSlider.value, 10), 255, threshType);
+        if (mode === 'auto') {
+          let channels = new cv.MatVector();
+          cv.split(src, channels);
+
+          let edgesCombined = cv.Mat.zeros(h, w, cv.CV_8UC1);
+          const lowThresh = Math.max(10, Math.round(sliderVal * 0.6));
+          const highThresh = Math.max(25, Math.round(sliderVal * 1.6));
+
+          for (let c = 0; c < 3; c++) {
+            let ch = channels.get(c);
+            let chBlur = new cv.Mat();
+            let chEdge = new cv.Mat();
+            cv.GaussianBlur(ch, chBlur, new cv.Size(5, 5), 0);
+            cv.Canny(chBlur, chEdge, lowThresh, highThresh);
+            cv.bitwise_or(edgesCombined, chEdge, edgesCombined);
+            ch.delete();
+            chBlur.delete();
+            chEdge.delete();
+          }
+          channels.delete();
+
+          let closeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(5, 5));
+          cv.morphologyEx(edgesCombined, mask, cv.MORPH_CLOSE, closeKernel);
+          closeKernel.delete();
+          edgesCombined.delete();
+        } else {
+          let gray = new cv.Mat();
+          let blurred = new cv.Mat();
+          cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+          cv.GaussianBlur(gray, blurred, new cv.Size(3, 3), 0);
+          const threshType = mode === 'dark' ? cv.THRESH_BINARY_INV : cv.THRESH_BINARY;
+          cv.threshold(blurred, mask, sliderVal, 255, threshType);
+          gray.delete();
+          blurred.delete();
+        }
 
         const sepPx = parseInt(sepSlider.value, 10);
-        if (sepPx > 0) {
+        if (sepPx > 0 && mode !== 'auto') {
           const kSize = sepPx * 2 + 1;
           let erodeKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(kSize, kSize));
-          cv.erode(thresh, thresh, erodeKernel);
+          cv.erode(mask, mask, erodeKernel);
           erodeKernel.delete();
         }
 
-        cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE);
+        cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE);
 
         const shapes = [];
         for (let i = 0; i < contours.size(); i++) {
           let cnt = contours.get(i);
           let area = cv.contourArea(cnt);
-          if (area < (w * h * 0.015)) continue;
+          let rect = cv.boundingRect(cnt);
+
+          const touchesBorder = rect.x <= 2 && rect.y <= 2 && (rect.x + rect.width) >= w - 3 && (rect.y + rect.height) >= h - 3;
+          if (touchesBorder) continue;
+          if (area < (w * h * 0.012) || area > (w * h * 0.92)) continue;
 
           let approx = new cv.Mat();
           let peri = cv.arcLength(cnt, true);
@@ -431,7 +490,7 @@
             if (p.y > maxY) maxY = p.y;
           });
 
-          if (sepPx > 0) {
+          if (sepPx > 0 && mode !== 'auto') {
             const cx = (minX + maxX) / 2;
             const cy = (minY + maxY) / 2;
             const halfW = Math.max(1, (maxX - minX) / 2);
@@ -462,9 +521,7 @@
         renderSelection();
       } finally {
         src.delete();
-        gray.delete();
-        blurred.delete();
-        thresh.delete();
+        mask.delete();
         contours.delete();
         hierarchy.delete();
       }
@@ -485,6 +542,38 @@
       });
     }
 
+    function drawHighContrastPath(ctx, pts, mainColor, lineWidth, isDashed = false) {
+      ctx.save();
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      if (isDashed) ctx.setLineDash([8, 6]);
+
+      // Слой 1: Контрастная тёмная обводка-подложка (чтобы линия читалась на белом/светлом)
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.lineWidth = lineWidth + Math.max(3, Math.round(lineWidth * 0.65));
+      ctx.beginPath();
+      pts.forEach((p, idx) => {
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+
+      // Слой 2: Яркая неоновая основная линия
+      ctx.strokeStyle = mainColor;
+      ctx.lineWidth = lineWidth;
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      pts.forEach((p, idx) => {
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function renderSelection() {
       if (!lastBaseCanvas) return;
       const w = lastBaseCanvas.width;
@@ -497,29 +586,20 @@
 
       if (detectedShapes.length === 0) {
         normalizedPoints = [];
-        polyInfo.textContent = 'Контур не найден (подвиньте порог)';
+        polyInfo.textContent = 'Контур не найден (подвиньте чувствительность)';
         updateSizeAndButton();
         return;
       }
 
-      // Невыбранные этикетки тонким пунктиром
+      const baseLineW = Math.max(3.5, Math.round(w / 180));
+
+      // Невыбранные этикетки — яркий голубой пунктир с тёмной подложкой
       detectedShapes.forEach((shape, idx) => {
         if (idx === selectedShapeIdx) return;
-        outCtx.save();
-        outCtx.strokeStyle = 'rgba(59, 130, 246, 0.75)';
-        outCtx.setLineDash([6, 4]);
-        outCtx.lineWidth = Math.max(2, Math.round(w / 350));
-        outCtx.beginPath();
-        shape.pts.forEach((p, i) => {
-          if (i === 0) outCtx.moveTo(p.x, p.y);
-          else outCtx.lineTo(p.x, p.y);
-        });
-        outCtx.closePath();
-        outCtx.stroke();
-        outCtx.restore();
+        drawHighContrastPath(outCtx, shape.pts, '#00f0ff', Math.max(2.5, baseLineW * 0.7), true);
       });
 
-      // Активная выбранная этикетка + поворот на выбранный угол
+      // Активная выбранная этикетка + поворот
       const active = detectedShapes[selectedShapeIdx];
       const cx = (active.bbox.minX + active.bbox.maxX) / 2;
       const cy = (active.bbox.minY + active.bbox.maxY) / 2;
@@ -563,20 +643,9 @@
         outCtx.restore();
       }
 
-      // Габаритная контрольная рамка
+      // Полупрозрачная заливка внутри активного контура для мгновенной читаемости
       outCtx.save();
-      outCtx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
-      outCtx.setLineDash([5, 5]);
-      outCtx.lineWidth = Math.max(1.5, Math.round(w / 450));
-      outCtx.strokeRect(minX, minY, boxW, boxH);
-      outCtx.restore();
-
-      // Яркий зелёный контур высечки
-      outCtx.save();
-      outCtx.strokeStyle = '#10b981';
-      outCtx.lineWidth = Math.max(3, Math.round(w / 220));
-      outCtx.lineJoin = 'round';
-      outCtx.fillStyle = 'rgba(16, 185, 129, 0.16)';
+      outCtx.fillStyle = activeStrokeColor + '26'; // ~15% прозрачности
       outCtx.beginPath();
       rotatedPts.forEach((p, idx) => {
         if (idx === 0) outCtx.moveTo(p.x, p.y);
@@ -584,11 +653,24 @@
       });
       outCtx.closePath();
       outCtx.fill();
-      outCtx.stroke();
       outCtx.restore();
 
-      const foundCountText = detectedShapes.length > 1 ? ` (этикетка ${selectedShapeIdx + 1} из ${detectedShapes.length})` : '';
-      polyInfo.textContent = `Точек: ${rotatedPts.length}${foundCountText}`;
+      // Габаритная контрольная рамка (бело-жёлтая с тёмной обводкой)
+      outCtx.save();
+      outCtx.setLineDash([6, 5]);
+      outCtx.strokeStyle = 'rgba(15, 23, 42, 0.75)';
+      outCtx.lineWidth = Math.max(2.5, Math.round(w / 320));
+      outCtx.strokeRect(minX, minY, boxW, boxH);
+      outCtx.strokeStyle = '#fde047';
+      outCtx.lineWidth = Math.max(1.5, Math.round(w / 500));
+      outCtx.strokeRect(minX, minY, boxW, boxH);
+      outCtx.restore();
+
+      // Яркий двухслойный контур активной этикетки
+      drawHighContrastPath(outCtx, rotatedPts, activeStrokeColor, baseLineW, false);
+
+      const foundCountText = detectedShapes.length > 1 ? ` • этикетка ${selectedShapeIdx + 1} из ${detectedShapes.length}` : '';
+      polyInfo.textContent = `Найдено точек: ${rotatedPts.length}${foundCountText}`;
       updateSizeAndButton();
     }
 
