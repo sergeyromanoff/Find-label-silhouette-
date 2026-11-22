@@ -902,6 +902,93 @@
       return Math.abs(area) / 2;
     }
 
+    // Честная проверка пересечения двух выпуклых/простых многоугольников (SAT / сегменты) с учётом зазора gap
+    function polygonsOverlapWithGap(polyA, polyB, gap) {
+      // Быстрый отсев по описанным прямоугольникам с учётом зазора
+      let minAx = Infinity, minAy = Infinity, maxAx = -Infinity, maxAy = -Infinity;
+      polyA.forEach(p => { if (p.x < minAx) minAx = p.x; if (p.y < minAy) minAy = p.y; if (p.x > maxAx) maxAx = p.x; if (p.y > maxAy) maxAy = p.y; });
+      let minBx = Infinity, minBy = Infinity, maxBx = -Infinity, maxBy = -Infinity;
+      polyB.forEach(p => { if (p.x < minBx) minBx = p.x; if (p.y < minBy) minBy = p.y; if (p.x > maxBx) maxBx = p.x; if (p.y > maxBy) maxBy = p.y; });
+
+      if (maxAx + gap < minBx - 1e-6 || maxBx + gap < minAx - 1e-6 || maxAy + gap < minBy - 1e-6 || maxBy + gap < minAy - 1e-6) {
+        return false;
+      }
+
+      // Проверка принадлежности точки многоугольнику
+      const ptInside = (px, py, poly) => {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const xi = poly[i].x, yi = poly[i].y;
+          const xj = poly[j].x, yj = poly[j].y;
+          const inter = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / ((yj - yi) || 1e-9) + xi);
+          if (inter) inside = !inside;
+        }
+        return inside;
+      };
+
+      // Расстояние от точки (px, py) до отрезка (ax, ay)-(bx, by)
+      const ptToSegDist = (px, py, ax, ay, bx, by) => {
+        const vx = bx - ax, vy = by - ay;
+        const wx = px - ax, wy = py - ay;
+        const c1 = vx * wx + vy * wy;
+        if (c1 <= 0) return Math.hypot(px - ax, py - ay);
+        const c2 = vx * vx + vy * vy;
+        if (c2 <= c1) return Math.hypot(px - bx, py - by);
+        const t = c1 / c2;
+        return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
+      };
+
+      // Расстояние между двумя отрезками AB и CD
+      const segToSegDist = (ax, ay, bx, by, cx, cy, dx, dy) => {
+        const ccw = (p1x, p1y, p2x, p2y, p3x, p3y) => (p3y - p1y) * (p2x - p1x) > (p2y - p1y) * (p3x - p1x);
+        const intersect = (ccw(ax, ay, cx, cy, dx, dy) !== ccw(bx, by, cx, cy, dx, dy)) &&
+                          (ccw(ax, ay, bx, by, cx, cy) !== ccw(ax, ay, bx, by, dx, dy));
+        if (intersect) return 0;
+        return Math.min(
+          ptToSegDist(ax, ay, cx, cy, dx, dy),
+          ptToSegDist(bx, by, cx, cy, dx, dy),
+          ptToSegDist(cx, cy, ax, ay, bx, by),
+          ptToSegDist(dx, dy, ax, ay, bx, by)
+        );
+      };
+
+      // Пересечение контуров или попадание вершины внутрь
+      for (let i = 0; i < polyA.length; i++) {
+        if (ptInside(polyA[i].x, polyA[i].y, polyB)) return true;
+      }
+      for (let i = 0; i < polyB.length; i++) {
+        if (ptInside(polyB[i].x, polyB[i].y, polyA)) return true;
+      }
+
+      // Проверка минимального расстояния между всеми рёбрами двух многоугольников < gap
+      const minAllowed = Math.max(0, gap - 1e-4);
+      for (let i = 0; i < polyA.length; i++) {
+        const a1 = polyA[i];
+        const a2 = polyA[(i + 1) % polyA.length];
+        for (let j = 0; j < polyB.length; j++) {
+          const b1 = polyB[j];
+          const b2 = polyB[(j + 1) % polyB.length];
+          if (segToSegDist(a1.x, a1.y, a2.x, a2.y, b1.x, b1.y, b2.x, b2.y) < minAllowed) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function getPlacedPolygonWorldCoords(item, baseVerts) {
+      const cxLocal = item.w / 2;
+      const cyLocal = item.h / 2;
+      // Для повёрнутого на 90° габарита используем базовые габариты до поворота и сдвигаем в (item.x, item.y)
+      const rawW = (item.angle === 90 || item.angle === 270) ? item.h : item.w;
+      const rawH = (item.angle === 90 || item.angle === 270) ? item.w : item.h;
+      const verts = generateRegularPolygonVertices(rawW, rawH, baseVerts.length);
+      const rot = rotatePoints(verts, rawW / 2, rawH / 2, item.angle || 0);
+      let minRx = Infinity, minRy = Infinity;
+      rot.forEach(p => { if (p.x < minRx) minRx = p.x; if (p.y < minRy) minRy = p.y; });
+      return rot.map(p => ({ x: item.x + (p.x - minRx), y: item.y + (p.y - minRy) }));
+    }
+
     function packSimplePolygon(zoneW, zoneH, w, h, sides, gap, mode) {
       const grid0 = packRectRegularGrid(zoneW, zoneH, w, h, gap, false);
       const grid90 = packRectRegularGrid(zoneW, zoneH, h, w, gap, true);
@@ -909,13 +996,14 @@
       if (mode === 'grid0') return { items: grid0, label: `Сетка 0° (${sides}-угольник)` };
       if (mode === 'grid90') return { items: grid90, label: `Поворот 90° (${sides}-угольник)` };
 
-      // Для многоугольников (треугольник, ромб, шестигранник и т.д.) проверяем также сотовую/шахматную укладку:
-      // Чётные и нечётные ряды сдвигаются на полшага, а для треугольников (3 угла) нечётные ряды ещё и переворачиваются «валетом» (180°)!
+      const baseVerts = generateRegularPolygonVertices(w, h, sides);
       const candidates = [
         { items: grid0, label: `Сетка 0° (${sides}-угольник)` },
         { items: grid90, label: `Сетка 90° (${sides}-угольник)` }
       ];
 
+      // Честный бескомпромиссный проход укладки многоугольников по строкам с проверкой отсутствия пересечений
+      // и соблюдения зазора gap между реальными гранями соседних фигур!
       const orientations = [
         { itemW: w, itemH: h, baseAng: 0 },
         { itemW: h, itemH: w, baseAng: 90 }
@@ -924,60 +1012,50 @@
       for (const ori of orientations) {
         if (ori.itemW > zoneW + 1e-6 || ori.itemH > zoneH + 1e-6) continue;
 
-        // Для треугольника (sides === 3) укладка «валетом» (0° и 180°) с шагом (itemW + gap)/2 по X даёт почти двукратную плотность
-        if (sides === 3) {
-          const halfStepX = (ori.itemW + gap) * 0.5;
-          const pitchY = ori.itemH + gap;
-          const rows = Math.floor((zoneH + gap + 1e-6) / pitchY);
-          const cols = ori.itemW <= zoneW + 1e-6 ? 1 + Math.floor((zoneW - ori.itemW + 1e-6) / halfStepX) : 0;
-          if (rows > 0 && cols > 0) {
-            const triItems = [];
-            for (let r = 0; r < rows; r++) {
-              for (let c = 0; c < cols; c++) {
-                const flip180 = (c % 2 === 1);
-                triItems.push({
-                  x: c * halfStepX,
-                  y: r * pitchY,
-                  w: ori.itemW,
-                  h: ori.itemH,
-                  angle: flip180 ? (ori.baseAng + 180) % 360 : ori.baseAng,
-                  isNestedVariant: flip180
-                });
+        const anglesToTry = sides === 3 ? [ori.baseAng, (ori.baseAng + 180) % 360] : [ori.baseAng];
+        const placed = [];
+        const placedPolys = [];
+
+        const stepX = Math.max(2, Math.min(ori.itemW * 0.25, 5));
+        const stepY = Math.max(2, Math.min(ori.itemH * 0.25, 5));
+
+        for (let gy = 0; gy <= zoneH - ori.itemH + 1e-6; gy += stepY) {
+          for (let gx = 0; gx <= zoneW - ori.itemW + 1e-6; gx += stepX) {
+            for (let aIdx = 0; aIdx < anglesToTry.length; aIdx++) {
+              const ang = anglesToTry[aIdx];
+              const candidateItem = {
+                x: gx,
+                y: gy,
+                w: ori.itemW,
+                h: ori.itemH,
+                angle: ang,
+                isNestedVariant: ang !== ori.baseAng
+              };
+              const candPoly = getPlacedPolygonWorldCoords(candidateItem, baseVerts);
+
+              // Проверяем, не пересекается ли новый многоугольник (с учётом зазора gap) ни с одним уже уложенным
+              let collides = false;
+              for (let k = 0; k < placedPolys.length; k++) {
+                if (polygonsOverlapWithGap(candPoly, placedPolys[k], gap)) {
+                  collides = true;
+                  break;
+                }
+              }
+
+              if (!collides) {
+                placed.push(candidateItem);
+                placedPolys.push(candPoly);
+                break;
               }
             }
-            candidates.push({ items: triItems, label: `Встречный нестинг треугольников (${ori.baseAng}°/180°)` });
           }
-        } else {
-          // Сотовый/шахматный сдвиг рядов для ромбов, пяти-, шести-, восьмиугольников
-          const pitchX = ori.itemW + gap;
-          const shiftX = pitchX * 0.5;
-          // Коэффициент сближения рядов по вертикали для N-угольников (для 6-угольника ~0.78, для 4-угольника/ромба ~0.55)
-          const rowFactor = sides === 4 ? 0.56 : (sides === 6 ? 0.78 : 0.86);
-          const pitchY = (ori.itemH + gap) * rowFactor;
+        }
 
-          const colsEven = Math.floor((zoneW + gap + 1e-6) / pitchX);
-          const colsOdd = Math.floor((zoneW - shiftX + gap + 1e-6) / pitchX);
-          const rowsHoriz = zoneH >= ori.itemH - 1e-6 ? 1 + Math.floor((zoneH - ori.itemH + 1e-6) / pitchY) : 0;
-
-          if (rowsHoriz > 0 && colsEven > 0) {
-            const hexItems = [];
-            for (let r = 0; r < rowsHoriz; r++) {
-              const isOdd = r % 2 === 1;
-              const cols = isOdd ? colsOdd : colsEven;
-              const offX = isOdd ? shiftX : 0;
-              for (let c = 0; c < cols; c++) {
-                hexItems.push({
-                  x: offX + c * pitchX,
-                  y: r * pitchY,
-                  w: ori.itemW,
-                  h: ori.itemH,
-                  angle: ori.baseAng,
-                  isNestedVariant: isOdd
-                });
-              }
-            }
-            candidates.push({ items: hexItems, label: `Сотовый нестинг ${sides}-угольников (${ori.baseAng}°)` });
-          }
+        if (placed.length > 0) {
+          const desc = sides === 3
+            ? `Встречный нестинг треугольников без наложений (${ori.baseAng}°/180°)`
+            : `Плотный нестинг ${sides}-угольников без наложений (${ori.baseAng}°)`;
+          candidates.push({ items: placed, label: desc });
         }
       }
 
